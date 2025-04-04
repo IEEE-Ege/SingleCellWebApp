@@ -1,7 +1,8 @@
 import scanpy as sc
 import numpy as np
 
-adata = sc.read_10x_mtx()
+adata = sc.datasets.pbmc3k()
+
 
 # Step 1: Create example data (random counts matrix)
 np.random.seed(42)  # For reproducibility
