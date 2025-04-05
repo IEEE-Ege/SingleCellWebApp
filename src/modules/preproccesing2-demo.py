@@ -1,5 +1,6 @@
 import scanpy as sc
 import numpy as np
+from preprocessing import filter_data, calculate_qc_metrics, select_highly_variable_genes
 
 adata = sc.datasets.pbmc3k()
 
