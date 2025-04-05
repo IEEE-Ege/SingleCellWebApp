@@ -1,9 +1,9 @@
 import scanpy as sc
 import numpy as np
+import pandas as pd
 from preprocessing import filter_data, calculate_qc_metrics, select_highly_variable_genes
 
-adata = sc.datasets.pbmc3k()
-
+adata = 'pbmc3k.h5ad'
 
 # Step 1: Create example data (random counts matrix)
 np.random.seed(42)  # For reproducibility
@@ -21,9 +21,16 @@ adata = sc.AnnData(counts)
 adata.var_names = [f"Gene_{i}" for i in range(n_genes)]  # Gene names: Gene_0, Gene_1, ..., Gene_4999
 adata.obs_names = [f"Cell_{i}" for i in range(n_cells)]  # Cell names: Cell_0, Cell_1, ..., Cell_999
 
+# Before adding 'MT-', note that var_names is not a list but an Index object.
+# So we need to convert var_names to a list before making changes.
+var_names_list = adata.var_names.tolist()
+
 # Add some mitochondrial genes for demonstration (every 10th gene is mitochondrial)
 for i in range(0, n_genes, 10):
-    adata.var_names[i] = f"MT-{adata.var_names[i]}"  # Rename every 10th gene to start with "MT-"
+    var_names_list[i] = f"MT-{var_names_list[i]}"  # Rename every 10th gene to start with "MT-"
+
+# We assign the modified list back as an Index object
+adata.var_names = pd.Index(var_names_list)
 
 # Step 2: Apply filter_data to filter cells and genes
 adata_filtered = filter_data(adata, min_genes=200, min_cells=3)
