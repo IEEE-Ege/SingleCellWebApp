@@ -1,6 +1,6 @@
 import scanpy as sc
 
-def filter_data(adata, min_genes=200, min_cells=3):
+def filter_data(adata, min_genes:int=200, min_cells:int=3):
     """
     Filters the dataset:
     - Ensures that cells have at least 'min_genes' genes.
@@ -18,7 +18,7 @@ def calculate_qc_metrics(adata):
     sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], percent_top=None, log1p=False, inplace=True)
     return adata
 
-def select_highly_variable_genes(adata, min_mean=0.0125, max_mean=3, min_disp=0.5):
+def select_highly_variable_genes(adata, min_mean:float=0.0125, max_mean:int=3, min_disp:float=0.5):
     """
     Identifies highly variable genes in the dataset.
     """
