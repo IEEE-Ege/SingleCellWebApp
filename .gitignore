@@ -172,3 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+data/Users-azratuncay-Downloads-filtered_gene_bc_matrices-hg19-matrix.h5ad
+
+
