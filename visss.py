@@ -27,9 +27,10 @@ def load_file_demo(file_path):
     print("Preprocessing done.")
     return adata
 
-def pca_plot(adata, log=True, color='CST3'):
+def pca_plot(adata,log=True,color= 'CST3'):
+    sc.pp.pca(adata)
     sc.pl.pca_variance_ratio(adata, log=log)
-    sc.pl.pca(adata, color=color)
+    sc.pl.pca(adata, color) 
     plt.show()
 def highvarGen_pl(adata):
     if "Cell type" in adata.obs:
