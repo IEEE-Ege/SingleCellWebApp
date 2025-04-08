@@ -3,7 +3,13 @@ import numpy as np
 import pandas as pd
 from preprocessing import filter_data, calculate_qc_metrics, select_highly_variable_genes
 
-adata = 'pbmc3k.h5ad'
+def load_file_demo(file_path):
+    adata = sc.read_h5ad(file_path)
+    adata.write("adata_demo.h5ad")
+    print("Data saved as adata_demo.h5ad")
+
+file_path = "C:/Users/pc/OneDrive/Masaüstü/bioinformatic/Hw3covid_Data_AllCells.h5ad"
+adata = load_file_demo(file_path)
 
 # Step 1: Create example data (random counts matrix)
 np.random.seed(42)  # For reproducibility
