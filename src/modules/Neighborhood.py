@@ -1,10 +1,10 @@
-import shiny  # Only needed if you are planning to use it later
+import shiny  #Only needed if you are planning to use it later
 import scanpy as sc
 import umap
 
 adata = sc.read("C:/Users/pc/.ipython/HW3/Hw3covid_Data_AllCells.h5ad")
 
-# computing
+#computing
 def compute(adata, n_neighbors=10, n_pcs=40):
     """_summary_
 
@@ -19,7 +19,7 @@ def compute(adata, n_neighbors=10, n_pcs=40):
     except Exception as e:
         print(f"Error in computing neighbors: {e}")
 
-# embedding
+#embedding
 def embed(adata, color=['CST3', 'NKG7', 'PPBP']):
     """_summary_
 
@@ -34,7 +34,7 @@ def embed(adata, color=['CST3', 'NKG7', 'PPBP']):
     except Exception as e:
         print(f"Error in embedding: {e}")
 
-# clustering
+#clustering
 def cluster(adata, color=['leiden', 'CST3', 'NKG7']):
     """_summary_
 
@@ -49,7 +49,7 @@ def cluster(adata, color=['leiden', 'CST3', 'NKG7']):
     except Exception as e:
         print(f"Error in clustering: {e}")
 
-# saving
+#saving
 def save(results_file, adata):
     """_summary_
 
