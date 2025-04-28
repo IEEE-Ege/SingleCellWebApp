@@ -1,5 +1,6 @@
 import scanpy as sc
 import pandas as pd
+from rank_genes_group import rank_genes_groups
 
 # Load the dataset
 adata = sc.datasets.pbmc3k()
