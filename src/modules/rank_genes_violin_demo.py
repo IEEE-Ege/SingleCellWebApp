@@ -1,3 +1,4 @@
+from rank_genes_violin import get_rank_genes_groups_violin
 import scanpy as sc
 
 #sample dataset
