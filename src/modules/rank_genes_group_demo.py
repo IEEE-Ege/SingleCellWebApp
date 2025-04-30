@@ -1,7 +1,8 @@
-from rank_genes_group import rank_genes_group
+from rankgenesgroup import rank_genes_groups
 import scanpy as sc
 
-sc.datasets.pbmc3k()
+adata = sc.datasets.pbmc3k()
+
 sc.pp.normalize_total(adata, target_sum=1e4)
 sc.pp.log1p(adata)
 sc.pp.highly_variable_genes(adata, min_mean=0.0125, max_mean=3, min_disp=0.5)
@@ -19,5 +20,5 @@ sc.settings.verbosity = 2
 
 #to save results
 results_file = "pbmc3k_rank_genes.h5ad"
-rank_genes_groups(adata, groupby='leiden' , method='t-test' , n_genes=25 , sharey=False)
+sc.tl.rank_genes_groups(adata, groupby='leiden' , method='t-test' , n_genes=25 , sharey=False)
 adata.write(results_file)
