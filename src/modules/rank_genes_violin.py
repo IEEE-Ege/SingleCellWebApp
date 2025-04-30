@@ -1,5 +1,8 @@
-
 import scanpy as sc
+adata = sc.datasets.pbmc3k()
+sc.pp.neighbors(adata)
+sc.tl.leiden(adata, resolution=1.0)
+sc.settings.verbosity = 2  # reduce the verbosity
 
 def get_rank_genes_groups_violin(adata, groups='0', n_genes=8):
    """
