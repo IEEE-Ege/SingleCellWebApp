@@ -1,6 +1,6 @@
 import scanpy as sc
 import pandas as pd
-from get_marker_genes import get_marker_genes  # defined function in main code
+from markedgenes import get_marker_genes  # defined function in main code
 
 # Demo dataset
 adata = sc.datasets.pbmc3k()
