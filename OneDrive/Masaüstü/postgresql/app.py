@@ -1,6 +1,6 @@
 from shiny import App, ui, reactive, render
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import sessionmaker, declarative_base
 import bcrypt
 import jwt
 import datetime
@@ -8,6 +8,16 @@ import datetime
 DATABASE_URL = "postgresql+psycopg2://postgres:oyku@localhost/sca"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+
+Base.metadata.create_all(bind=engine)
 
 SECRET_KEY = "supersecretkey123"
 
@@ -110,6 +120,7 @@ def server(input, output, session):
     jwt_token = reactive.Value(None)
     message = reactive.Value("")
     page_state = reactive.Value("register")
+    show_token = reactive.Value(False)
 
     @output
     @render.text
@@ -167,7 +178,6 @@ def server(input, output, session):
                 ui.p("Please log in to see this content.")
             )
     
-    show_token = reactive.Value(False)
 
     @output
     @render.ui
@@ -213,21 +223,19 @@ def server(input, output, session):
             message.set("Please fill in all registration fields.")
             return
 
-        hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-
-        try:
-            with SessionLocal() as db:
-                existing = db.execute(text("SELECT * FROM users WHERE username=:u OR email=:e"), {"u": username, "e": email}).fetchone()
-                if existing:
-                    message.set("You are already registered. Please log in.")
-                    page_state.set("login")
-                    return
-                db.execute(text("INSERT INTO users (username, email, password_hash) VALUES (:u, :e, :p)"), {"u": username, "e": email, "p": hashed})
-                db.commit()
-            message.set("Registration successful! Please log in.")
+        db = SessionLocal()
+        if db.query(User).filter((User.username == username) | (User.email == email)).first():
+            message.set("You are already registered. Please log in.")
             page_state.set("login")
-        except Exception as e:
-            message.set(f"An error occurred during registration: {e}")
+            return
+
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        new_user = User(username=username, email=email, password_hash=hashed)
+        db.add(new_user)
+        db.commit()
+        db.close()
+        message.set("Registration successful! Please log in.")
+        page_state.set("login")
 
     @reactive.Effect
     @reactive.event(input.btn_login)
@@ -239,21 +247,22 @@ def server(input, output, session):
             message.set("Please enter both username and password.")
             return
 
-        try:
-            with SessionLocal() as db:
-                result = db.execute(text("SELECT password_hash FROM users WHERE username=:u"), {"u": username}).fetchone()
-                if not result:
-                    message.set("User not found.")
-                    return
-                if bcrypt.checkpw(password.encode(), result[0].encode()):
-                    logged_in.set(True)
-                    current_user.set(username)
-                    jwt_token.set(create_jwt_token(username))
-                    message.set("Login successful.")
-                else:
-                    message.set("Incorrect password.")
-        except Exception as e:
-            message.set(f"An error occurred during login: {e}")
+        db = SessionLocal()
+        user = db.query(User).filter(User.username == username).first()
+        db.close()
+
+        if not user:
+            message.set("User not found.")
+            return
+
+        if bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+            logged_in.set(True)
+            current_user.set(username)
+            token = create_jwt_token(username)
+            jwt_token.set(token)
+            message.set("Login successful.")
+        else:
+            message.set("Incorrect password.")
 
     @reactive.Effect
     @reactive.event(input.btn_logout)
