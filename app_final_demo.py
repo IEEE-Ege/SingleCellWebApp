@@ -5,7 +5,7 @@ import bcrypt
 import jwt
 import datetime
 
-# --- Database Configuration (Keeping Azra's original database URL) ---
+# Database Configuration
 # IMPORTANT: Ensure your PostgreSQL server is running and the 'postgres' user
 # with password '1234' has access to the 'AZRA_SCA_DEMO' database.
 DATABASE_URL = "postgresql://postgres:1234@localhost:5432/AZRA_SCA_DEMO"
@@ -24,7 +24,8 @@ class User(Base):
 # Create database tables if they don't exist
 Base.metadata.create_all(bind=engine)
 
-# JWT Secret Key - IMPORTANT: In a real application, use a strong, randomly generated
+# JWT Secret Key
+# IMPORTANT: In a real application, use a strong, randomly generated
 # key stored securely (e.g., in environment variables), not hardcoded.
 SECRET_KEY = "supersecretkey123"
 
@@ -38,7 +39,7 @@ def create_jwt_token(username):
     # Encode the payload with the secret key and HS256 algorithm
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
-# --- Define the User Interface (UI) for the Shiny app ---
+# Define the User Interface (UI) for the Shiny app
 app_ui = ui.page_fluid(
     # Custom CSS styling for the app's appearance
     ui.tags.style("""
@@ -199,7 +200,7 @@ app_ui = ui.page_fluid(
         ui.output_ui("protected_content"), # Content visible only when logged in
         class_="container" # Apply the CSS container class
     ),
-    # Add JavaScript for "Enter to continue" functionality
+    # Add JavaScript for "Enter to continue" functionality on form submissions
     ui.tags.script("""
         $(document).on('keypress', function(e) {
             if(e.which == 13) { // Enter key
@@ -217,7 +218,7 @@ app_ui = ui.page_fluid(
     """)
 )
 
-# --- Define the Server logic for the Shiny app ---
+# Define the Server logic for the Shiny app
 def server(input, output, session):
     # Reactive values to manage application state
     logged_in = reactive.Value(False)
@@ -225,10 +226,11 @@ def server(input, output, session):
     jwt_token = reactive.Value(None)
     message = reactive.Value("")
     message_type = reactive.Value("error")
+    # Default page state is "register"
     page_state = reactive.Value("register") # Can be "register", "login", "forgot_password_initiate", "forgot_password_reset"
     show_token = reactive.Value(False)
     
-    # Store temporary user info for password reset
+    # Store temporary user info for password reset flow
     reset_username = reactive.Value(None)
     reset_email = reactive.Value(None)
 
@@ -503,7 +505,8 @@ def server(input, output, session):
                 message_type.set("success")
                 message.set("Your password has been successfully reset. You can now log in with your new password.")
                 page_state.set("login")
-                reset_username.set(None) # Clear reset state
+                # Clear reset state
+                reset_username.set(None) 
                 reset_email.set(None)
             else:
                 message_type.set("error")
@@ -531,6 +534,6 @@ def server(input, output, session):
 # Create the Shiny App instance
 app = App(app_ui, server)
 
-# This line starts the Shiny web server. It should be at the end of your script.
+# This line starts the Shiny web server. 
 if __name__ == "__main__":
     app.run()
