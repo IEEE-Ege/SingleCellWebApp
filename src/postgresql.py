@@ -5,6 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column, Session, DeclarativeBase
 import bcrypt
 import jwt
 import datetime
+import os
+from dotenv import load_dotenv #pip install python-dotenv
 
 # SQLAlchemy 2.0 ORM Base
 class Base(DeclarativeBase):
@@ -23,14 +25,15 @@ class User(Base):
 # with password '1234' has access to the 'AZRA_SCA_DEMO' database.
 # Create database tables if they don't exist.
 #DATABASE_URL = "postgresql://postgres:1234@localhost:5432/AZRA_SCA_DEMO"
-DATABASE_URL = "postgresql+psycopg2://postgres:oyku@localhost/sca"
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY")
+
 engine = create_engine(DATABASE_URL, echo=False)
 Base.metadata.create_all(engine)
 
-# JWT Secret Key
-# IMPORTANT: In a real application, use a strong, randomly generated
-# key stored securely (e.g., in environment variables), not hardcoded.
-SECRET_KEY = "supersecretkey123"
 
 # Function to create a JWT token
 def create_jwt_token(username: str) -> str:
