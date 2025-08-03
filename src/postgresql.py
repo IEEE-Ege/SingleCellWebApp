@@ -1,4 +1,5 @@
 from shiny import App, ui, reactive, render
+from htmltools import head_content
 from sqlalchemy import create_engine, Integer, String, select, or_
 from sqlalchemy.orm import Mapped, mapped_column, Session, DeclarativeBase
 import bcrypt
@@ -45,6 +46,7 @@ def create_jwt_token(username: str) -> str:
 app_ui = ui.page_fluid(
     # Custom CSS styling for the app's appearance
     ui.head_content(ui.include_css("frontend/styles.css")),
+    ui.head_content(ui.include_js("frontend/app.js")),
 
     # Main application div container
     ui.div(
@@ -55,22 +57,6 @@ app_ui = ui.page_fluid(
         ui.output_ui("protected_content"), # Content visible only when logged in
         class_="container" # Apply the CSS container class
     ),
-    # Add JavaScript for "Enter to continue" functionality on form submissions
-    ui.tags.script("""
-        $(document).on('keypress', function(e) {
-            if(e.which == 13) { // Enter key
-                if ($('#main_ui').find('#btn_login').is(':visible')) {
-                    $('#btn_login').click();
-                } else if ($('#main_ui').find('#btn_register').is(':visible')) {
-                    $('#btn_register').click();
-                } else if ($('#main_ui').find('#btn_reset_password_initiate').is(':visible')) {
-                    $('#btn_reset_password_initiate').click();
-                } else if ($('#main_ui').find('#btn_reset_password_final').is(':visible')) {
-                    $('#btn_reset_password_final').click();
-                }
-            }
-        });
-    """)
 )
 
 # Define the Server logic for the Shiny app
