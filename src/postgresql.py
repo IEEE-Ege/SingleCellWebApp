@@ -45,8 +45,8 @@ def create_jwt_token(username: str) -> str:
 # Define the User Interface (UI) for the Shiny app
 app_ui = ui.page_fluid(
     # Custom CSS styling for the app's appearance
-    ui.head_content(ui.include_css("frontend/styles.css")),
-    ui.include_js("frontend/app.js"),
+    ui.head_content(ui.include_css("frontend/styles.css"),
+                    ui.tags.script(src="frontend/app.js")),
 
 
     # Main application div container
