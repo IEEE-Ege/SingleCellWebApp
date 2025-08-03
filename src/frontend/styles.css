@@ -1,0 +1,147 @@
+/* General body styling for a softer background and font */
+body {
+    background-color: #eef2f7; /* Light blue-grey background */
+    font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: #333;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh; /* Full viewport height */
+}
+/* Container styling for a modern card-like look */
+.container {
+    max-width: 450px; /* Slightly wider for better spacing */
+    width: 90%; /* Responsive width */
+    padding: 30px 35px;
+    border-radius: 12px; /* More rounded corners */
+    background-color: #ffffff; /* Pure white background */
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12); /* Stronger, softer shadow */
+    box-sizing: border-box; /* Include padding in element's total width and height */
+}
+/* Title styling */
+h2 {
+    text-align: center;
+    color: #2c3e50; /* Darker title color */
+    margin-bottom: 30px;
+    font-size: 2.2rem; /* Larger title */
+    font-weight: 700; /* Bolder font */
+    font-family: 'Lucida Console', 'Consolas', monospace; /* Lucida Console font for bold text */
+}
+/* Form headings styling */
+h3 {
+    color: #34495e;
+    margin-bottom: 25px; /* More space below heading */
+    text-align: center;
+    font-size: 1.6rem; /* Larger form headings */
+    font-weight: 600;
+    font-family: 'Lucida Console', 'Consolas', monospace; /* Lucida Console font for bold text */
+}
+/* Input field styling */
+input[type="text"], input[type="password"], input[type="email"] {
+    width: 100%;
+    padding: 12px 15px; /* More padding */
+    margin-bottom: 20px; /* More space between inputs */
+    border: 1px solid #dcdcdc; /* Lighter border */
+    border-radius: 8px; /* More rounded input fields */
+    font-size: 1.05rem; /* Slightly larger text in inputs */
+    box-sizing: border-box;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+/* Input focus effect */
+input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus {
+    border-color: #f7a6b5; /* Brighter pastel pink on focus */
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(247, 166, 181, 0.5); /* Glow effect with pastel pink */
+}
+/* Button styling */
+button, .btn {
+    background-color: #f7baba; /* Pastel pink color */
+    color: white;
+    padding: 12px 0; /* More vertical padding */
+    width: 100%;
+    font-size: 1.1rem; /* Larger font for buttons */
+    font-weight: 600; /* Bolder button text */
+    border: none;
+    border-radius: 8px; /* More rounded buttons */
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    letter-spacing: 0.5px; /* Slightly spaced letters */
+}
+/* Button hover effect */
+button:hover, .btn:hover {
+    background-color: #f7a6b5; /* Darker pastel pink on hover */
+    transform: translateY(-2px); /* Slight lift effect */
+}
+button:active, .btn:active {
+    transform: translateY(0); /* Press down effect */
+}
+/* Link styling for switch between forms */
+a.form-link {
+    display: block;
+    text-align: center;
+    margin-top: 20px;
+    color: #f7baba; /* Pastel pink for links */
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: color 0.3s ease;
+}
+/* Link hover effect */
+a.form-link:hover {
+    text-decoration: underline;
+    color: #f7a6b5;
+}
+/* Message area styling (for error/success messages) */
+#message_text {
+    text-align: center;
+    font-weight: 600;
+    margin-top: 15px; /* Adjusted margin */
+    margin-bottom: 25px; /* Adjusted margin */
+    color: #dc3545; /* Red for error messages */
+    font-size: 0.95rem;
+}
+/* Styling for success messages */
+.message-success {
+    color: #28a745 !important; /* Green for success */
+}
+/* Horizontal rule styling */
+hr {
+    border: 0;
+    height: 1px;
+    background: #eee; /* Lighter divider */
+    margin: 30px 0;
+}
+/* Protected content styling */
+#protected_content {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 25px;
+    text-align: center;
+    color: #495057;
+}
+#protected_content h4 {
+    color: #f7baba; /* Pastel pink for protected content heading */
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+    font-family: 'Lucida Console', 'Consolas', monospace; /* Lucida Console font for bold text */
+}
+/* JWT Token display styling */
+.token-display {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 150px;
+    overflow-y: auto;
+    background-color: #e9ecef; /* Slightly darker background for token */
+    padding: 15px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-family: 'Fira Code', 'Cascadia Code', monospace; /* Modern monospace font */
+    font-size: 0.85rem;
+    margin-top: 15px;
+    color: #495057;
+}
