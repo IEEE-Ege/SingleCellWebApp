@@ -2,6 +2,7 @@ from shiny import App, ui, reactive, render
 from htmltools import head_content
 from sqlalchemy import create_engine, Integer, String, select, or_
 from sqlalchemy.orm import Mapped, mapped_column, Session, DeclarativeBase
+from utilities import create_jwt_token
 import bcrypt
 import jwt
 import datetime
@@ -33,17 +34,6 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 engine = create_engine(DATABASE_URL, echo=False)
 Base.metadata.create_all(engine)
-
-
-# Function to create a JWT token
-def create_jwt_token(username: str) -> str:
-    # Payload for the JWT token
-    payload = {
-        "user": username,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1), # Token expires in 1 hour
-    }
-    # Encode the payload with the secret key and HS256 algorithm
-    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
 # Define the User Interface (UI) for the Shiny app
 app_ui = ui.page_fluid(
@@ -237,7 +227,7 @@ def server(input, output, session):
             message.set("Please fill in all registration fields.")
             return
         
-        with Session(engine) as db:
+        with Session(engine) as db: #create session fonksiyonu yapıp çağır, get session
             stmt = select(User).where(or_(User.username == username, User.email == email))
             existing = db.execute(stmt).scalar_one_or_none()
 
@@ -257,7 +247,7 @@ def server(input, output, session):
             page_state.set("login")          
 
     # Reactive effect to handle user login
-    @reactive.Effect
+    @reactive.Effect #get userdan login statusunu alıp eger loginse print bişe bişe
     @reactive.event(input.btn_login)
     def login():
         username = input.login_username()
@@ -280,7 +270,7 @@ def server(input, output, session):
         if bcrypt.checkpw(password.encode(), user.password_hash.encode()):
             logged_in.set(True)
             current_user.set(username)
-            token = create_jwt_token(username)
+            token = create_jwt_token(username, SECRET_KEY)
             jwt_token.set(token)
             message_type.set("success")
             message.set("Login successful! Welcome.")
