@@ -5,12 +5,9 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 # .env dosyasını yükle
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Function to create a JWT token
-def create_jwt_token(username: str) -> str:
+def create_jwt_token(username: str, SECRET_KEY) -> str:
     if not SECRET_KEY:
         raise ValueError("SECRET_KEY environment variable not set.")
     

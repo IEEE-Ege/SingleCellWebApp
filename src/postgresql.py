@@ -270,7 +270,7 @@ def server(input, output, session):
         if bcrypt.checkpw(password.encode(), user.password_hash.encode()):
             logged_in.set(True)
             current_user.set(username)
-            token = create_jwt_token(username)
+            token = create_jwt_token(username, SECRET_KEY)
             jwt_token.set(token)
             message_type.set("success")
             message.set("Login successful! Welcome.")
