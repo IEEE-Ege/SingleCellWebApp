@@ -38,8 +38,8 @@ Base.metadata.create_all(engine)
 # Define the User Interface (UI) for the Shiny app
 app_ui = ui.page_fluid(
     # Custom CSS styling for the app's appearance
-    ui.head_content(ui.include_css("frontend/styles.css"),
-                    ui.tags.script(src="frontend/app.js")),
+    ui.head_content(ui.include_css("www/frontend/styles.css"),
+                    ui.tags.script(src="www/frontend/app.js")),
 
 
     # Main application div container
@@ -371,6 +371,14 @@ def server(input, output, session):
         page_state.set("login")
         message_type.set("success")
         message.set("You have been successfully logged out.")
+
+    # Protected function: Accessible only to logged-in users
+    @reactive.Effect
+    def protected_action():
+        if logged_in() and jwt_token():
+            print("A message only visible to logged-in users.")
+        else:
+            print("Unauthorized access attempt.")
 
 # Create the Shiny App instance
 app = App(app_ui, server)
