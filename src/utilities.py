@@ -1,17 +1,21 @@
 # utilities.py
 import jwt
-from datetime import datetime, timedelta
 import os
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
+
+# .env dosyasını yükle
+load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Function to create a JWT token
-def create_jwt_token(username: str, SECRET_KEY: str) -> str:
-    # Payload for the JWT token
+def create_jwt_token(username: str) -> str:
+    if not SECRET_KEY:
+        raise ValueError("SECRET_KEY environment variable not set.")
+    
     payload = {
         "user": username,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1), # Token expires in 1 hour
+        "exp": datetime.utcnow() + timedelta(hours=1),  # Token expires in 1 hour
     }
-    # Encode the payload with the secret key and HS256 algorithm
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
