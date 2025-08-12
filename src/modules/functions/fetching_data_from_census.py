@@ -38,12 +38,22 @@ def census_function(
             data = table.concat().to_pandas()
             return data # the data is like an excel table
 
-# for running the function
-adata = census_function(
-    organism="Homo sapiens",
-    cell_filter="tissue == 'brain' and sex == 'male'",
-    gene_filter="feature_id in ['ENSG00000161798','ENSG00000188229']",
-    metadata_columns=["cell_type","tissue"],
-    return_anndata=True
-)
-print(adata)
+#testing the function
+if __name__ == "__main__":
+    # example usage
+    print("Test is running...")
+    
+    # test with assumed parameters
+    default_result = census_function()
+    print("\nResult with default parameters (DataFrame):")
+    print(default_result.head())
+    
+    adata = census_function(
+        organism="Homo sapiens",
+        cell_filter="tissue == 'brain' and sex == 'male'",
+        gene_filter="feature_id in ['ENSG00000161798','ENSG00000188229']",
+        metadata_columns=["cell_type","tissue"],
+        return_anndata=True
+    )
+    print("\nAnndata object:")
+    print(adata)

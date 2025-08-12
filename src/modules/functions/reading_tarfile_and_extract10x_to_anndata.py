@@ -61,12 +61,15 @@ def extract_10x_tar_to_anndata(tar_path: str, extract_dir: str = "./temp") -> an
 # this code checks if there's a list called gene_ids and is it's different from the existing genes list if both are true it adds these gene_ids as a new column named 'gene_id' to the AnnData object's gene-specific information (adata.var).
 
     return adata
+#testing
+if __name__ == "__main__":
+    test_file = "/pbmc3k_filtered_gene_bc_matrices.tar.gz"
+    try:
+        adata = extract_10x_tar_to_anndata(test_file)
+        print("test is succesfull, AnnData :")
+        print(adata)
+    except FileNotFoundError:
+        print(f" Error: {test_file} not found! Please try another file path.")
 
-# function call with the specified tar file
-tar_file = "/pbmc3k_filtered_gene_bc_matrices.tar.gz"
-# making sure the tar file actually exists at this path before calling the function
-if os.path.exists(tar_file):
-    adata = extract_10x_tar_to_anndata(tar_path=tar_file)
-    print(adata)
-else:
-    print(f"Error: Tar file not found at {tar_file}")
+
+
