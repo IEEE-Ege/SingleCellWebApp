@@ -298,16 +298,6 @@ def server(input, output, session):
                 page_state.set("forgot_password_initiate")
                 return
 
-        user.password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
-        db.add(user)
-        db.commit()
-
-        message_type.set("success")
-        message.set("Password reset successfully.")
-        reset_username.set(None)
-        reset_email.set(None)
-        page_state.set("login")
-
     # Reactive effect to handle user logout
     @reactive.Effect
     @reactive.event(input.btn_logout)
