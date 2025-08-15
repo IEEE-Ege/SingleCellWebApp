@@ -244,7 +244,7 @@ def server(input, output, session):
             return
 
         db = SessionLocal()
-        user = update_user_password(db, username, email)
+        user = get_user_by_username_or_email(db, username, email)
 
         if user:
             reset_username.set(username)
@@ -280,23 +280,19 @@ def server(input, output, session):
             return
 
         db = SessionLocal()
-        user = update_user_password(db, new_password)
-
-        if user:
-                hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
-                user.password_hash = hashed
-                db.commit()
-                message_type.set("success")
-                message.set("Your password has been successfully reset. You can now log in with your new password.")
-                page_state.set("login")
-                # Clear reset state
-                reset_username.set(None) 
-                reset_email.set(None)            
+        user = update_user_password(db, reset_username(), reset_email(), new_password)
+         
         if not user:
                 message_type.set("error")
                 message.set("User not found during password reset. Please try again.")
                 page_state.set("forgot_password_initiate")
                 return
+
+        message_type.set("success")
+        message.set("Your password has been successfully reset. You can now log in with your new password.")
+        page_state.set("login")
+        reset_username.set(None)
+        reset_email.set(None)
 
     # Reactive effect to handle user logout
     @reactive.Effect
