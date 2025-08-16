@@ -32,7 +32,7 @@ def server(input, output, session):
     # Store temporary user info for password reset flow
     reset_username = reactive.Value(None)
     reset_email = reactive.Value(None)
-
+    last_activity = reactive.Value(None)
     # Render reactive message text to the UI with dynamic styling
     @output
     @render.ui
@@ -147,6 +147,8 @@ def server(input, output, session):
                class_="token-display"
            )
         return None
+    
+
 
     # Reactive effect to toggle the visibility of the JWT token
     @reactive.Effect
@@ -205,7 +207,7 @@ def server(input, output, session):
         page_state.set("login") 
         
     # Reactive effect to handle user login
-    @reactive.Effect #get userdan login statusunu alıp eger loginse print bişe bişe
+    @reactive.Effect
     @reactive.event(input.btn_login)
     def login():
         username = input.login_username()
@@ -221,13 +223,14 @@ def server(input, output, session):
 
         if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
             message_type.set("error")
-            message.set("User not found or incorrect username.")
+            message.set("Invalid username or password.")
             return
 
         token = create_jwt_token({"username": user.username}, SECRET_KEY)
         jwt_token.set(token)
         current_user.set(user)
         logged_in.set(True)
+        last_activity.set(datetime.now())  # Reset activity timer on login
         message_type.set("success")
         message.set("Login successful! Welcome!")
 
@@ -306,10 +309,30 @@ def server(input, output, session):
         message_type.set("success")
         message.set("You have been successfully logged out.")
 
+    @reactive.Effect
+    def check_session_timeout():
+        # Check every 60 seconds
+        reactive.invalidate_later(60)
+        
+        if not logged_in():
+            return
+            
+        # Check both token expiration AND 1 hour inactivity
+        is_expired = (
+            (datetime.now() - last_activity()).total_seconds() > 3600 or  # 1 hour inactivity
+            (jwt_token() and is_token_expired(jwt_token(), SECRET_KEY))    # Token expired
+        )
+        
+        if is_expired:
+            message_type.set("error")
+            message.set("Your session has expired due to inactivity. Please log in again.")
+            logout()
+
     # Protected function: Accessible only to logged-in users
     @reactive.Effect
     def protected_action():
         if logged_in() and jwt_token():
-            print("A message only visible to logged-in users.")
+            last_activity.set(datetime.now())  # Refresh activity timestamp
+            print("Protected action performed by logged-in user")
         else:
-            print("Unauthorized access attempt.")
+            print("Unauthorized access attempt")

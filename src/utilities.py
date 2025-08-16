@@ -16,3 +16,13 @@ def create_jwt_token(username: str, SECRET_KEY) -> str:
         "exp": datetime.utcnow() + timedelta(hours=1),  # Token expires in 1 hour
     }
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+def is_token_expired(token: str, secret_key: str) -> bool:
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=["HS256"])
+        exp = payload.get('exp')
+        if exp is None:
+            return True
+        return datetime.utcnow() > datetime.fromtimestamp(exp)
+    except:
+        return True
