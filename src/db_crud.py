@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from db_models import User
 import bcrypt
 
-# CREATE
+# CREATE_
 def create_user(db: Session, username: str, email: str, password: str):
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     user = User(username=username, email=email, password_hash=hashed)

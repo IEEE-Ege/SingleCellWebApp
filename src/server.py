@@ -217,7 +217,7 @@ def server(input, output, session):
         db_generator = get_db()
         db = next(db_generator)
         try:
-            # PREVIOUSLY: user = get_user_by_username_or_email(db, username, email)
+            # PREVIOUSLY: user = get_user_by_username_or_email(db, username, email)_
             # This was insecure because it would find a user if only the username matched.
             
             # NOW: We use the new function that checks for BOTH username AND email.
