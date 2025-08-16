@@ -5,9 +5,16 @@ import datetime
 
 # Imports from our own modules
 from db import init_db
-from db_crud import create_user, get_user_by_username, get_user_by_username_or_email, update_user_password
-from utilities import create_jwt_token, is_token_expired, SECRET_KEY # Get SECRET_KEY from utilities
-from dependencies import get_db, get_current_user # Import our new dependencies
+# Import the new function from db_crud
+from db_crud import (
+    create_user, 
+    get_user_by_username, 
+    get_user_by_username_or_email, 
+    update_user_password,
+    get_user_by_username_and_email # <-- ADDED IMPORT
+)
+from utilities import create_jwt_token, is_token_expired, SECRET_KEY
+from dependencies import get_db, get_current_user
 
 # Initialize the database
 init_db()
@@ -34,13 +41,12 @@ def server(input, output, session):
     def message_text():
         if message_type() == "success":
             return ui.tags.div(message(), class_="message-success")
-        return ui.tags.div(message(), class_="message-error") # Also add a class for error messages
+        return ui.tags.div(message(), class_="message-error")
 
     @output
     @render.ui
     def main_ui():
         if logged_in():
-            # Show username if current_user() is not None
             username = current_user().username if current_user() else "User"
             return ui.div(
                 ui.h3(f"Welcome, {username}!"),
@@ -136,8 +142,7 @@ def server(input, output, session):
         message.set("")
         page_state.set("forgot_password_initiate")
 
-    # --- Main Logic Functions (MODIFIED) ---
-
+    # --- Main Logic Functions ---
     @reactive.Effect
     @reactive.event(input.btn_register)
     def register():
@@ -165,7 +170,7 @@ def server(input, output, session):
             message_type.set("success")
             page_state.set("login")
         finally:
-            next(db_generator, None) # Close the session
+            next(db_generator, None)
         
     @reactive.Effect
     @reactive.event(input.btn_login)
@@ -187,7 +192,7 @@ def server(input, output, session):
                 message_type.set("error")
                 return
 
-            token = create_jwt_token(username=user.username) # Use the new function from utilities
+            token = create_jwt_token(username=user.username)
             jwt_token.set(token)
             current_user.set(user)
             logged_in.set(True)
@@ -197,6 +202,7 @@ def server(input, output, session):
         finally:
             next(db_generator, None)
 
+    # --- MODIFIED FOR SECURITY ---
     @reactive.Effect
     @reactive.event(input.btn_reset_password_initiate)
     def reset_password_initiate():
@@ -211,18 +217,26 @@ def server(input, output, session):
         db_generator = get_db()
         db = next(db_generator)
         try:
-            user = get_user_by_username_or_email(db, username, email)
+            # PREVIOUSLY: user = get_user_by_username_or_email(db, username, email)
+            # This was insecure because it would find a user if only the username matched.
+            
+            # NOW: We use the new function that checks for BOTH username AND email.
+            user = get_user_by_username_and_email(db, username, email)
+            
             if user:
+                # If a user is found, we know both username and email are correct.
                 reset_username.set(username)
                 reset_email.set(email)
                 message.set("User verified. Please set your new password.")
                 message_type.set("success")
                 page_state.set("forgot_password_reset")
             else:
-                message.set("Username or email is incorrect.")
+                # If no user is found, the combination is wrong.
+                message.set("The username and email combination is incorrect.")
                 message_type.set("error")
         finally:
             next(db_generator, None)
+    # ---------------------------
 
     @reactive.Effect
     @reactive.event(input.btn_reset_password_final)
@@ -243,12 +257,21 @@ def server(input, output, session):
         db_generator = get_db()
         db = next(db_generator)
         try:
+<<<<<<< HEAD
+=======
+            # This part now correctly handles the tuple (user, error) from your updated function
+>>>>>>> 93cea65 (Added securty cehck for input validation)
             user, error = update_user_password(db, reset_username(), reset_email(), new_password)
             if error:
                message.set(error)
                message_type.set("error")
+<<<<<<< HEAD
                return     
                    
+=======
+               return
+            
+>>>>>>> 93cea65 (Added securty cehck for input validation)
             if not user:
                 message.set("User not found during password reset.")
                 message_type.set("error")
@@ -274,11 +297,10 @@ def server(input, output, session):
         message.set("You have been successfully logged out.")
         message_type.set("success")
 
-    # --- Background Checks (MODIFIED) ---
-
+    # --- Background Checks ---
     @reactive.Effect
     def check_session_timeout():
-        reactive.invalidate_later(60) # Check every 60 seconds
+        reactive.invalidate_later(60)
         
         if not logged_in() or not last_activity():
             return
@@ -295,22 +317,15 @@ def server(input, output, session):
 
     @reactive.Effect
     def protected_action():
-        # This function is no longer tied to a button;
-        # it runs continuously in the background to update activity.
-        # Any user interaction (like an input change) can trigger it.
-        # To be more specific, it could also be tied to a button.
         if logged_in() and jwt_token():
             db_generator = get_db()
             db = next(db_generator)
             try:
-                # TASK: "Check if current user exists"
                 user = get_current_user(token=jwt_token(), db=db)
                 if user:
-                    # User is valid, refresh activity timestamp
                     last_activity.set(datetime.datetime.now())
                     print(f"Activity refreshed for user: {user.username}")
                 else:
-                    # Token exists, but user is not in DB (may have been deleted)
                     print("User from token not found in DB. Logging out.")
                     message.set("Your account could not be verified. Please log in again.")
                     message_type.set("error")
