@@ -1,21 +1,16 @@
 from shiny import App, ui, reactive, render
 from htmltools import head_content
-from sqlalchemy import create_engine, Integer, String, select, or_
-from sqlalchemy.orm import Mapped, mapped_column, Session, DeclarativeBase
-from utilities import create_jwt_token
 import bcrypt
-import jwt
 import datetime
-import os
-from dotenv import load_dotenv #pip install python-dotenv
-from db import SessionLocal, init_db
+
+# Imports from our own modules
+from db import init_db
 from db_crud import create_user, get_user_by_username, get_user_by_username_or_email, update_user_password
+from utilities import create_jwt_token, is_token_expired, SECRET_KEY # Get SECRET_KEY from utilities
+from dependencies import get_db, get_current_user # Import our new dependencies
 
-# Database Configuration
+# Initialize the database
 init_db()
-
-load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Define the Server logic for the Shiny app
 def server(input, output, session):
@@ -25,29 +20,30 @@ def server(input, output, session):
     jwt_token = reactive.Value(None)
     message = reactive.Value("")
     message_type = reactive.Value("error")
-    # Default page state is "register"
-    page_state = reactive.Value("register") # Can be "register", "login", "forgot_password_initiate", "forgot_password_reset"
+    page_state = reactive.Value("register")
     show_token = reactive.Value(False)
     
     # Store temporary user info for password reset flow
     reset_username = reactive.Value(None)
     reset_email = reactive.Value(None)
     last_activity = reactive.Value(None)
-    # Render reactive message text to the UI with dynamic styling
+
+    # --- UI Rendering Functions ---
     @output
     @render.ui
     def message_text():
         if message_type() == "success":
             return ui.tags.div(message(), class_="message-success")
-        return ui.tags.div(message())
+        return ui.tags.div(message(), class_="message-error") # Also add a class for error messages
 
-    # Dynamically render the main UI based on login state and page state
     @output
     @render.ui
     def main_ui():
         if logged_in():
+            # Show username if current_user() is not None
+            username = current_user().username if current_user() else "User"
             return ui.div(
-                ui.h3(f"Welcome, {current_user().username}!"),
+                ui.h3(f"Welcome, {username}!"),
                 ui.p("You are successfully logged in and can now access protected content."),
                 ui.input_action_button("btn_toggle_token", "Toggle JWT Token Display", class_="btn"),
                 ui.output_ui("token_text"),
@@ -60,12 +56,7 @@ def server(input, output, session):
                 ui.input_text("reg_email", "Email", placeholder="Enter your email address"),
                 ui.input_password("reg_password", "Password", placeholder="Create a strong password"),
                 ui.input_action_button("btn_register", "Register", class_="btn"),
-                ui.a(
-                    "Already have an account? Log in here.",
-                    href="#",
-                    onclick="Shiny.setInputValue('go_to_login', Math.random())",
-                    class_="form-link"
-                ),
+                ui.a("Already have an account? Log in here.", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link"),
             )
         elif page_state() == "login":
             return ui.div(
@@ -73,18 +64,8 @@ def server(input, output, session):
                 ui.input_text("login_username", "Username", placeholder="Enter your username"),
                 ui.input_password("login_password", "Password", placeholder="Enter your password"),
                 ui.input_action_button("btn_login", "Log In", class_="btn"),
-                ui.a(
-                    "Don't have an account? Register here.",
-                    href="#",
-                    onclick="Shiny.setInputValue('go_to_register', Math.random())",
-                    class_="form-link"
-                ),
-                ui.a(
-                    "Forgot Password?",
-                    href="#",
-                    onclick="Shiny.setInputValue('go_to_forgot_password_initiate', Math.random())",
-                    class_="form-link"
-                )
+                ui.a("Don't have an account? Register here.", href="#", onclick="Shiny.setInputValue('go_to_register', Math.random())", class_="form-link"),
+                ui.a("Forgot Password?", href="#", onclick="Shiny.setInputValue('go_to_forgot_password_initiate', Math.random())", class_="form-link")
             )
         elif page_state() == "forgot_password_initiate":
             return ui.div(
@@ -93,12 +74,7 @@ def server(input, output, session):
                 ui.input_text("reset_username_input", "Username", placeholder="Enter your username"),
                 ui.input_text("reset_email_input", "Email", placeholder="Enter your email address"),
                 ui.input_action_button("btn_reset_password_initiate", "Continue", class_="btn"),
-                ui.a(
-                    "Back to Login",
-                    href="#",
-                    onclick="Shiny.setInputValue('go_to_login', Math.random())",
-                    class_="form-link"
-                )
+                ui.a("Back to Login", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link")
             )
         elif page_state() == "forgot_password_reset":
             return ui.div(
@@ -107,15 +83,9 @@ def server(input, output, session):
                 ui.input_password("new_password", "New Password", placeholder="Enter your new strong password"),
                 ui.input_password("confirm_new_password", "Confirm New Password", placeholder="Confirm your new password"),
                 ui.input_action_button("btn_reset_password_final", "Reset Password", class_="btn"),
-                ui.a(
-                    "Back to Login",
-                    href="#",
-                    onclick="Shiny.setInputValue('go_to_login', Math.random())",
-                    class_="form-link"
-                )
+                ui.a("Back to Login", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link")
             )
 
-    # Render protected content based on JWT token presence
     @output
     @render.ui
     def protected_content():
@@ -123,7 +93,6 @@ def server(input, output, session):
             return ui.div(
                 ui.h4("🔒 Protected Application Dashboard"),
                 ui.p("Welcome to your secure dashboard! This area is only accessible after successful authentication."),
-                ui.p("You can integrate your secure analytics, personalized reports, or confidential data visualizations here."),
                 ui.tags.ul(
                     ui.tags.li("View real-time data analytics."),
                     ui.tags.li("Manage user settings."),
@@ -134,53 +103,41 @@ def server(input, output, session):
             return ui.div(
                 ui.h4("🚫 Access Restricted"),
                 ui.p("Please log in to view the protected content and features."),
-                ui.p("Register if you don't have an account yet.")
             )
 
-    # Render the JWT token text with styling for readability
     @output
     @render.ui
     def token_text():
         if show_token() and jwt_token():
-           return ui.div(
-               jwt_token(),
-               class_="token-display"
-           )
+           return ui.div(jwt_token(), class_="token-display")
         return None
     
-
-
-    # Reactive effect to toggle the visibility of the JWT token
+    # --- Page Transitions ---
     @reactive.Effect
     @reactive.event(input.btn_toggle_token)
     def toggle_token():
         show_token.set(not show_token())
 
-    # Reactive effect to switch to the login page
     @reactive.Effect
     @reactive.event(input.go_to_login)
     def go_to_login_event():
         message.set("")
-        message_type.set("error")
         page_state.set("login")
 
-    # Reactive effect to switch to the register page
     @reactive.Effect
     @reactive.event(input.go_to_register)
     def go_to_register_event():
         message.set("")
-        message_type.set("error")
         page_state.set("register")
 
-    # Reactive effect to switch to the forgot password initiation page
     @reactive.Effect
     @reactive.event(input.go_to_forgot_password_initiate)
     def go_to_forgot_password_initiate_event():
         message.set("")
-        message_type.set("error")
         page_state.set("forgot_password_initiate")
 
-    # Reactive effect to handle user registration
+    # --- Main Logic Functions (MODIFIED) ---
+
     @reactive.Effect
     @reactive.event(input.btn_register)
     def register():
@@ -188,78 +145,85 @@ def server(input, output, session):
         email = input.reg_email()
         password = input.reg_password()
 
-        if not username or not email or not password:
-            message_type.set("error")
+        if not all([username, email, password]):
             message.set("Please fill in all registration fields.")
-            return
-        
-        db = SessionLocal()
-        existing = get_user_by_username_or_email(db, username, email)
-        if existing:
             message_type.set("error")
-            message.set("Username or Email already registered. Please log in or use different credentials.")
-            page_state.set("login")
             return
-
-        create_user(db, username, email, password)
-        message_type.set("success")
-        message.set("Registration successful! You can now log in.")
-        page_state.set("login") 
         
-    # Reactive effect to handle user login
+        db_generator = get_db()
+        db = next(db_generator)
+        try:
+            existing = get_user_by_username_or_email(db, username, email)
+            if existing:
+                message.set("Username or Email already registered.")
+                message_type.set("error")
+                page_state.set("login")
+                return
+
+            create_user(db, username, email, password)
+            message.set("Registration successful! You can now log in.")
+            message_type.set("success")
+            page_state.set("login")
+        finally:
+            next(db_generator, None) # Close the session
+        
     @reactive.Effect
     @reactive.event(input.btn_login)
     def login():
         username = input.login_username()
         password = input.login_password()
 
-        if not username or not password:
-            message_type.set("error")
+        if not all([username, password]):
             message.set("Please enter both username and password.")
+            message_type.set("error")
             return
         
-        db = SessionLocal()
-        user = get_user_by_username(db, username)
+        db_generator = get_db()
+        db = next(db_generator)
+        try:
+            user = get_user_by_username(db, username)
+            if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+                message.set("Invalid username or password.")
+                message_type.set("error")
+                return
 
-        if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-            message_type.set("error")
-            message.set("Invalid username or password.")
-            return
+            token = create_jwt_token(username=user.username) # Use the new function from utilities
+            jwt_token.set(token)
+            current_user.set(user)
+            logged_in.set(True)
+            last_activity.set(datetime.datetime.now())
+            message.set("Login successful! Welcome!")
+            message_type.set("success")
+        finally:
+            next(db_generator, None)
 
-        token = create_jwt_token({"username": user.username}, SECRET_KEY)
-        jwt_token.set(token)
-        current_user.set(user)
-        logged_in.set(True)
-        last_activity.set(datetime.now())  # Reset activity timer on login
-        message_type.set("success")
-        message.set("Login successful! Welcome!")
-
-    # Reactive effect to handle initiation of password reset
     @reactive.Effect
     @reactive.event(input.btn_reset_password_initiate)
     def reset_password_initiate():
         username = input.reset_username_input()
         email = input.reset_email_input()
 
-        if not username or not email:
-            message_type.set("error")
+        if not all([username, email]):
             message.set("Please provide both username and email.")
+            message_type.set("error")
             return
 
-        db = SessionLocal()
-        user = get_user_by_username_or_email(db, username, email)
+        db_generator = get_db()
+        db = next(db_generator)
+        try:
+            user = get_user_by_username_or_email(db, username, email)
+            if user:
+                reset_username.set(username)
+                reset_email.set(email)
+                message.set("User verified. Please set your new password.")
+                message_type.set("success")
+                page_state.set("forgot_password_reset")
+            else:
+                message.set("Username or email is incorrect.")
+                message_type.set("error")
+        finally:
+            next(db_generator, None)
 
-        if user:
-            reset_username.set(username)
-            reset_email.set(email)
-            message_type.set("success")
-            message.set("Username and email verified. Please set your new password.")
-            page_state.set("forgot_password_reset")
-        else:
-            message_type.set("error")
-            message.set("Username or email is incorrect. Please try again.")
-
-    # Reactive effect to handle final password reset
     @reactive.Effect
     @reactive.event(input.btn_reset_password_final)
     def reset_password_final():
@@ -267,37 +231,33 @@ def server(input, output, session):
         confirm_new_password = input.confirm_new_password()
 
         if not new_password or not confirm_new_password:
-            message_type.set("error")
             message.set("Please enter and confirm your new password.")
+            message_type.set("error")
             return
         
         if new_password != confirm_new_password:
+            message.set("Passwords do not match.")
             message_type.set("error")
-            message.set("Passwords do not match. Please try again.")
             return
 
-        if not reset_username() or not reset_email():
-            message_type.set("error")
-            message.set("Error: User information not found for password reset. Please start again.")
-            page_state.set("forgot_password_initiate")
-            return
-
-        db = SessionLocal()
-        user = update_user_password(db, reset_username(), reset_email(), new_password)
-         
-        if not user:
+        db_generator = get_db()
+        db = next(db_generator)
+        try:
+            user = update_user_password(db, reset_username(), reset_email(), new_password)
+            if not user:
+                message.set("User not found during password reset.")
                 message_type.set("error")
-                message.set("User not found during password reset. Please try again.")
                 page_state.set("forgot_password_initiate")
                 return
 
-        message_type.set("success")
-        message.set("Your password has been successfully reset. You can now log in with your new password.")
-        page_state.set("login")
-        reset_username.set(None)
-        reset_email.set(None)
+            message.set("Password has been successfully reset.")
+            message_type.set("success")
+            page_state.set("login")
+            reset_username.set(None)
+            reset_email.set(None)
+        finally:
+            next(db_generator, None)
 
-    # Reactive effect to handle user logout
     @reactive.Effect
     @reactive.event(input.btn_logout)
     def logout():
@@ -306,33 +266,49 @@ def server(input, output, session):
         jwt_token.set(None)
         show_token.set(False)
         page_state.set("login")
-        message_type.set("success")
         message.set("You have been successfully logged out.")
+        message_type.set("success")
+
+    # --- Background Checks (MODIFIED) ---
 
     @reactive.Effect
     def check_session_timeout():
-        # Check every 60 seconds
-        reactive.invalidate_later(60)
+        reactive.invalidate_later(60) # Check every 60 seconds
         
-        if not logged_in():
+        if not logged_in() or not last_activity():
             return
             
-        # Check both token expiration AND 1 hour inactivity
         is_expired = (
-            (datetime.now() - last_activity()).total_seconds() > 3600 or  # 1 hour inactivity
-            (jwt_token() and is_token_expired(jwt_token(), SECRET_KEY))    # Token expired
+            (datetime.datetime.now() - last_activity()).total_seconds() > 3600 or
+            (jwt_token() and is_token_expired(jwt_token(), SECRET_KEY))
         )
         
         if is_expired:
+            message.set("Your session has expired. Please log in again.")
             message_type.set("error")
-            message.set("Your session has expired due to inactivity. Please log in again.")
             logout()
 
-    # Protected function: Accessible only to logged-in users
     @reactive.Effect
     def protected_action():
+        # This function is no longer tied to a button;
+        # it runs continuously in the background to update activity.
+        # Any user interaction (like an input change) can trigger it.
+        # To be more specific, it could also be tied to a button.
         if logged_in() and jwt_token():
-            last_activity.set(datetime.now())  # Refresh activity timestamp
-            print("Protected action performed by logged-in user")
-        else:
-            print("Unauthorized access attempt")
+            db_generator = get_db()
+            db = next(db_generator)
+            try:
+                # TASK: "Check if current user exists"
+                user = get_current_user(token=jwt_token(), db=db)
+                if user:
+                    # User is valid, refresh activity timestamp
+                    last_activity.set(datetime.datetime.now())
+                    print(f"Activity refreshed for user: {user.username}")
+                else:
+                    # Token exists, but user is not in DB (may have been deleted)
+                    print("User from token not found in DB. Logging out.")
+                    message.set("Your account could not be verified. Please log in again.")
+                    message_type.set("error")
+                    logout()
+            finally:
+                next(db_generator, None)
