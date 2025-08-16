@@ -26,9 +26,14 @@ def update_user_password(db: Session, username: str, email: str, new_password: s
     stmt = select(User).where(User.username == username, User.email == email)
     user = db.execute(stmt).scalar_one_or_none()
     if user:
+        # Check if new password is the same as the old one
+        if bcrypt.checkpw(new_password.encode(), user.password_hash.encode()):
+            return None, "Your new password cannot be the same as your old password. Please choose a different password."
+        
         hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
         user.password_hash = hashed
         db.commit()
-    return user
+        return user, None
+    return None, "User not found."
 
 # DELETE

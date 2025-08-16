@@ -243,7 +243,12 @@ def server(input, output, session):
         db_generator = get_db()
         db = next(db_generator)
         try:
-            user = update_user_password(db, reset_username(), reset_email(), new_password)
+            user, error = update_user_password(db, reset_username(), reset_email(), new_password)
+            if error:
+               message.set(error)
+               message_type.set("error")
+               return     
+                   
             if not user:
                 message.set("User not found during password reset.")
                 message_type.set("error")
