@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db_models import User
 import bcrypt
 
-# CREATE
+# CREATE_
 async def create_user(db: AsyncSession, username: str, email: str, password: str):
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     user = User(username=username, email=email, password_hash=hashed)
@@ -35,12 +35,13 @@ async def get_user_by_username_and_email(db: AsyncSession, username: str, email:
     stmt = select(User).where(User.username == username, User.email == email)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+# ---------------------------
 
-# UPDATE
 async def update_user_password(db: AsyncSession, username: str, email: str, new_password: str):
     """
     Updates a user's password after secure verification and checks against the old password.
     """
+    # Use the new secure function for verification before updating
     user = await get_user_by_username_and_email(db, username, email)
     if user:
         # Check if new password is the same as the old one

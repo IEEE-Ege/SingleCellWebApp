@@ -1,8 +1,10 @@
 from sqlalchemy import Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import DeclarativeBase
 
-# SQLAlchemy 2.0 ORM Base
-class Base(DeclarativeBase):
+# SQLAlchemy 2.0 Async ORM Base
+class Base(AsyncAttrs, DeclarativeBase):
     pass
 
 # Define the User model for SQLAlchemy

@@ -1,17 +1,15 @@
+
+# dependencies.py
 from db import SessionLocal
 from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
 from db_crud import get_user_by_username
-from utilities import SECRET_KEY
-from typing import AsyncGenerator
+from utilities import SECRET_KEY # import secret key from utilities
 
-# Async DB session dependency
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Yields an async database session."""
+async def get_db():
     async with SessionLocal() as db:
         yield db
 
-# Async current user dependency
 async def get_current_user(token: str, db: AsyncSession):
     """
     Decodes the JWT token and fetches the user from the database.
@@ -19,7 +17,6 @@ async def get_current_user(token: str, db: AsyncSession):
     """
     if not token:
         return None
-
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         username = payload.get("username")
@@ -27,6 +24,5 @@ async def get_current_user(token: str, db: AsyncSession):
             return None
     except jwt.PyJWTError:
         return None
-
     user = await get_user_by_username(db, username=username)
     return user
