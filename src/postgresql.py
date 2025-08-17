@@ -1,6 +1,9 @@
 from shiny import App, ui, reactive, render
 from htmltools import head_content
 from server import server
+import asyncio
+from db import init_db
+import nest_asyncio
 
 
 
@@ -27,4 +30,10 @@ app = App(app_ui, server)
 
 # This line starts the Shiny web server. 
 if __name__ == "__main__":
+    # DB init async olarak
+    asyncio.run(init_db())
+    
+    # Shiny server async başlat
+    import nest_asyncio
+    nest_asyncio.apply()  # Jupyter veya nested event loop varsa
     app.run()
