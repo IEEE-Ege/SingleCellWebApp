@@ -1,11 +1,9 @@
 from shiny import App, ui, reactive, render
 from htmltools import head_content
-from server import server as async_server
-import asyncio
+from server import server
 
-def server(input, output, session):
-    # Async fonksiyonu sync olarak çalıştır
-    asyncio.run(async_server(input, output, session))
+
+
 # Define the User Interface (UI) for the Shiny app
 app_ui = ui.page_fluid(
     # Custom CSS styling for the app's appearance

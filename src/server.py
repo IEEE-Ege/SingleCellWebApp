@@ -17,11 +17,11 @@ from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
 # Initialize DB async
-asyncio.run(init_db())
 
 # Async server function
 async def server(input, output, session):
     # Reactive values
+    await init_db()
     logged_in = reactive.Value(False)
     current_user = reactive.Value(None)
     jwt_token = reactive.Value(None)
