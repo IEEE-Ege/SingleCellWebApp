@@ -1,12 +1,13 @@
-# dependencies.py
 from db import SessionLocal
 from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
 from db_crud import get_user_by_username
 from utilities import SECRET_KEY
 from typing import AsyncGenerator
+
 # Async DB session dependency
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Yields an async database session."""
     async with SessionLocal() as db:
         yield db
 

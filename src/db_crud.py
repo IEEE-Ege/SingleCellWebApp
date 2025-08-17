@@ -19,19 +19,31 @@ async def get_user_by_username(db: AsyncSession, username: str):
     return result.scalar_one_or_none()
 
 async def get_user_by_username_or_email(db: AsyncSession, username: str, email: str):
+    """
+    Fetches a user if EITHER the username or email exists. 
+    Used for registration check.
+    """
     stmt = select(User).where(or_(User.username == username, User.email == email))
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 async def get_user_by_username_and_email(db: AsyncSession, username: str, email: str):
+    """
+    Fetches a user only if BOTH the username and email match a single record.
+    This is used for secure operations like password reset verification.
+    """
     stmt = select(User).where(User.username == username, User.email == email)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 # UPDATE
 async def update_user_password(db: AsyncSession, username: str, email: str, new_password: str):
+    """
+    Updates a user's password after secure verification and checks against the old password.
+    """
     user = await get_user_by_username_and_email(db, username, email)
     if user:
+        # Check if new password is the same as the old one
         if bcrypt.checkpw(new_password.encode(), user.password_hash.encode()):
             return None, "Your new password cannot be the same as your old password. Please choose a different password."
         

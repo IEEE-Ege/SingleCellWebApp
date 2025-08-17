@@ -4,23 +4,20 @@ import os
 from dotenv import load_dotenv
 from db_models import Base
 
-# .env dosyasını yükle
 load_dotenv()
-
-# Örn: postgresql+asyncpg://username:password@localhost:5432/mydb
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Asenkron engine
-engine = create_async_engine(DATABASE_URL, echo=False, future=True)
+# Async engine
+engine = create_async_engine(DATABASE_URL, echo=False)
 
-# Asenkron session factory
+# Async session factory
 SessionLocal = sessionmaker(
     bind=engine,
-    expire_on_commit=False,
-    class_=AsyncSession
+    class_=AsyncSession,
+    expire_on_commit=False
 )
 
-# Database init (asenkron)
 async def init_db():
+    """Create tables if they don't exist."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
