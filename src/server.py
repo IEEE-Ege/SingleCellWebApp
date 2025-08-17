@@ -17,7 +17,7 @@ from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
 # Initialize the database
-asyncio.run(init_db())
+init_db()
 
 # Define the Server logic for the Shiny app
 def server(input, output, session):
