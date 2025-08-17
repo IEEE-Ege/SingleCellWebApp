@@ -1,19 +1,26 @@
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
 from db_models import Base
 
-# Database Configuration
-# Create database tables if they don't exist.
-
+# .env dosyasını yükle
 load_dotenv()
 
+# Örn: postgresql+asyncpg://username:password@localhost:5432/mydb
 DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL, echo=False)
 
-# Session factory
-SessionLocal = sessionmaker(bind=engine)
+# Asenkron engine
+engine = create_async_engine(DATABASE_URL, echo=False, future=True)
 
-def init_db():
-    Base.metadata.create_all(engine)
+# Asenkron session factory
+SessionLocal = sessionmaker(
+    bind=engine,
+    expire_on_commit=False,
+    class_=AsyncSession
+)
+
+# Database init (asenkron)
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
