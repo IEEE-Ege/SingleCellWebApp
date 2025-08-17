@@ -9,16 +9,16 @@ from db_crud import (
     create_user,
     get_user_by_username,
     get_user_by_username_or_email,
-    get_user_by_username_and_email,
     update_user_password,
+    get_user_by_username_and_email
 )
 from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
-def server(input, output, session):
-    # Initialize the DB asynchronously at server start
-    asyncio.create_task(init_db())
+# Initialize DB in background
+asyncio.create_task(init_db())
 
+def server(input, output, session):
     # Reactive values
     logged_in = reactive.Value(False)
     current_user = reactive.Value(None)
@@ -54,33 +54,38 @@ def server(input, output, session):
         elif page_state() == "register":
             return ui.div(
                 ui.h3("Register New Account"),
-                ui.input_text("reg_username", "Username", placeholder="Enter your username"),
-                ui.input_text("reg_email", "Email", placeholder="Enter your email"),
-                ui.input_password("reg_password", "Password", placeholder="Enter password"),
+                ui.input_text("reg_username", "Username", placeholder="Enter your desired username"),
+                ui.input_text("reg_email", "Email", placeholder="Enter your email address"),
+                ui.input_password("reg_password", "Password", placeholder="Create a strong password"),
                 ui.input_action_button("btn_register", "Register", class_="btn"),
-                ui.a("Already have an account? Log in here.", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())")
+                ui.a("Already have an account? Log in here.", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link"),
             )
         elif page_state() == "login":
             return ui.div(
-                ui.h3("Log In"),
-                ui.input_text("login_username", "Username"),
-                ui.input_password("login_password", "Password"),
+                ui.h3("Log In to Your Account"),
+                ui.input_text("login_username", "Username", placeholder="Enter your username"),
+                ui.input_password("login_password", "Password", placeholder="Enter your password"),
                 ui.input_action_button("btn_login", "Log In", class_="btn"),
-                ui.a("Forgot Password?", href="#", onclick="Shiny.setInputValue('go_to_forgot_password_initiate', Math.random())")
+                ui.a("Don't have an account? Register here.", href="#", onclick="Shiny.setInputValue('go_to_register', Math.random())", class_="form-link"),
+                ui.a("Forgot Password?", href="#", onclick="Shiny.setInputValue('go_to_forgot_password_initiate', Math.random())", class_="form-link")
             )
         elif page_state() == "forgot_password_initiate":
             return ui.div(
-                ui.h3("Reset Password"),
-                ui.input_text("reset_username_input", "Username"),
-                ui.input_text("reset_email_input", "Email"),
-                ui.input_action_button("btn_reset_password_initiate", "Continue", class_="btn")
+                ui.h3("Reset Your Password"),
+                ui.p("Please enter your username and email to proceed."),
+                ui.input_text("reset_username_input", "Username", placeholder="Enter your username"),
+                ui.input_text("reset_email_input", "Email", placeholder="Enter your email address"),
+                ui.input_action_button("btn_reset_password_initiate", "Continue", class_="btn"),
+                ui.a("Back to Login", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link")
             )
         elif page_state() == "forgot_password_reset":
             return ui.div(
-                ui.h3(f"Set New Password for {reset_username()}"),
-                ui.input_password("new_password", "New Password"),
-                ui.input_password("confirm_new_password", "Confirm Password"),
-                ui.input_action_button("btn_reset_password_final", "Reset Password", class_="btn")
+                ui.h3("Set New Password"),
+                ui.p(f"Setting new password for {reset_username()}."),
+                ui.input_password("new_password", "New Password", placeholder="Enter your new strong password"),
+                ui.input_password("confirm_new_password", "Confirm New Password", placeholder="Confirm your new password"),
+                ui.input_action_button("btn_reset_password_final", "Reset Password", class_="btn"),
+                ui.a("Back to Login", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link")
             )
 
     @output
@@ -89,6 +94,25 @@ def server(input, output, session):
         if show_token() and jwt_token():
             return ui.div(jwt_token(), class_="token-display")
         return None
+
+    @output
+    @render.ui
+    def protected_content():
+        if logged_in():
+            return ui.div(
+                ui.h4("🔒 Protected Application Dashboard"),
+                ui.p("Welcome to your secure dashboard!"),
+                ui.tags.ul(
+                    ui.tags.li("View real-time data analytics."),
+                    ui.tags.li("Manage user settings."),
+                    ui.tags.li("Access exclusive features."),
+                ),
+            )
+        else:
+            return ui.div(
+                ui.h4("🚫 Access Restricted"),
+                ui.p("Please log in to view the protected content."),
+            )
 
     # --- Page Transitions ---
     @reactive.Effect
@@ -114,7 +138,10 @@ def server(input, output, session):
         message.set("")
         page_state.set("forgot_password_initiate")
 
-    # --- Main Logic Functions (async inside sync) ---
+    # --- Main Logic Functions ---
+    def run_async_task(coro):
+        asyncio.create_task(coro)
+
     @reactive.Effect
     @reactive.event(input.btn_register)
     def register():
@@ -122,9 +149,8 @@ def server(input, output, session):
             username = input.reg_username()
             email = input.reg_email()
             password = input.reg_password()
-
             if not all([username, email, password]):
-                message.set("Please fill in all fields.")
+                message.set("Please fill in all registration fields.")
                 message_type.set("error")
                 return
 
@@ -141,7 +167,7 @@ def server(input, output, session):
                 message_type.set("success")
                 page_state.set("login")
 
-        asyncio.create_task(do_register())
+        run_async_task(do_register())
 
     @reactive.Effect
     @reactive.event(input.btn_login)
@@ -149,7 +175,6 @@ def server(input, output, session):
         async def do_login():
             username = input.login_username()
             password = input.login_password()
-
             if not all([username, password]):
                 message.set("Please enter both username and password.")
                 message_type.set("error")
@@ -167,10 +192,10 @@ def server(input, output, session):
                 current_user.set(user)
                 logged_in.set(True)
                 last_activity.set(datetime.datetime.now())
-                message.set("Login successful!")
+                message.set("Login successful! Welcome!")
                 message_type.set("success")
 
-        asyncio.create_task(do_login())
+        run_async_task(do_login())
 
     @reactive.Effect
     @reactive.event(input.btn_reset_password_initiate)
@@ -178,7 +203,6 @@ def server(input, output, session):
         async def do_reset_initiate():
             username = input.reset_username_input()
             email = input.reset_email_input()
-
             if not all([username, email]):
                 message.set("Please provide both username and email.")
                 message_type.set("error")
@@ -189,14 +213,14 @@ def server(input, output, session):
                 if user:
                     reset_username.set(username)
                     reset_email.set(email)
-                    message.set("User verified. Please set new password.")
+                    message.set("User verified. Please set your new password.")
                     message_type.set("success")
                     page_state.set("forgot_password_reset")
                 else:
-                    message.set("The username/email combination is incorrect.")
+                    message.set("The username and email combination is incorrect.")
                     message_type.set("error")
 
-        asyncio.create_task(do_reset_initiate())
+        run_async_task(do_reset_initiate())
 
     @reactive.Effect
     @reactive.event(input.btn_reset_password_final)
@@ -204,9 +228,8 @@ def server(input, output, session):
         async def do_reset_final():
             new_password = input.new_password()
             confirm_new_password = input.confirm_new_password()
-
             if not new_password or not confirm_new_password:
-                message.set("Please enter and confirm password.")
+                message.set("Please enter and confirm your new password.")
                 message_type.set("error")
                 return
 
@@ -222,15 +245,14 @@ def server(input, output, session):
                     message_type.set("error")
                     return
 
-                message.set("Password successfully reset.")
+                message.set("Password has been successfully reset.")
                 message_type.set("success")
                 page_state.set("login")
                 reset_username.set(None)
                 reset_email.set(None)
 
-        asyncio.create_task(do_reset_final())
+        run_async_task(do_reset_final())
 
-    # --- Logout ---
     @reactive.Effect
     @reactive.event(input.btn_logout)
     def logout():
@@ -239,13 +261,13 @@ def server(input, output, session):
         jwt_token.set(None)
         show_token.set(False)
         page_state.set("login")
-        message.set("Logged out successfully.")
+        message.set("You have been successfully logged out.")
+        message_type.set("success")
 
     # --- Background Checks ---
     @reactive.Effect
     def check_session_timeout():
         reactive.invalidate_later(60)
-
         if not logged_in() or not last_activity():
             return
 
@@ -255,7 +277,7 @@ def server(input, output, session):
         )
 
         if is_expired:
-            message.set("Session expired. Please log in again.")
+            message.set("Your session has expired. Please log in again.")
             message_type.set("error")
             logout()
 
@@ -267,9 +289,9 @@ def server(input, output, session):
                     user = await get_current_user(token=jwt_token(), db=db)
                     if user:
                         last_activity.set(datetime.datetime.now())
-                        print(f"Activity refreshed for {user.username}")
+                        print(f"Activity refreshed for user: {user.username}")
                     else:
-                        message.set("Account verification failed. Log in again.")
+                        message.set("Your account could not be verified. Please log in again.")
                         message_type.set("error")
                         logout()
-        asyncio.create_task(do_protected())
+        run_async_task(do_protected())
