@@ -52,4 +52,3 @@ def update_user_password(db: Session, username: str, email: str, new_password: s
         db.commit()
         return user, None
     return None, "User not found."
-

@@ -257,21 +257,12 @@ def server(input, output, session):
         db_generator = get_db()
         db = next(db_generator)
         try:
-<<<<<<< HEAD
-=======
-            # This part now correctly handles the tuple (user, error) from your updated function
->>>>>>> 93cea65 (Added securty cehck for input validation)
             user, error = update_user_password(db, reset_username(), reset_email(), new_password)
             if error:
                message.set(error)
                message_type.set("error")
-<<<<<<< HEAD
                return     
                    
-=======
-               return
-            
->>>>>>> 93cea65 (Added securty cehck for input validation)
             if not user:
                 message.set("User not found during password reset.")
                 message_type.set("error")
