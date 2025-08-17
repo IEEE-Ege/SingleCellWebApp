@@ -59,7 +59,8 @@ def server(input, output, session):
                 ui.input_text("reg_email", "Email", placeholder="Enter your email address"),
                 ui.input_password("reg_password", "Password", placeholder="Create a strong password"),
                 ui.input_action_button("btn_register", "Register", class_="btn"),
-                ui.a("Already have an account? Log in here.", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link"),
+                ui.a("Already have an account? Log in here.", href="#",
+                    onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link"),
             )
         elif page_state() == "login":
             return ui.div(
@@ -67,8 +68,10 @@ def server(input, output, session):
                 ui.input_text("login_username", "Username", placeholder="Enter your username"),
                 ui.input_password("login_password", "Password", placeholder="Enter your password"),
                 ui.input_action_button("btn_login", "Log In", class_="btn"),
-                ui.a("Don't have an account? Register here.", href="#", onclick="Shiny.setInputValue('go_to_register', Math.random())", class_="form-link"),
-                ui.a("Forgot Password?", href="#", onclick="Shiny.setInputValue('go_to_forgot_password_initiate', Math.random())", class_="form-link")
+                ui.a("Don't have an account? Register here.", href="#",
+                    onclick="Shiny.setInputValue('go_to_register', Math.random())", class_="form-link"),
+                ui.a("Forgot Password?", href="#",
+                    onclick="Shiny.setInputValue('go_to_forgot_password_initiate', Math.random())", class_="form-link")
             )
         elif page_state() == "forgot_password_initiate":
             return ui.div(
@@ -77,7 +80,8 @@ def server(input, output, session):
                 ui.input_text("reset_username_input", "Username", placeholder="Enter your username"),
                 ui.input_text("reset_email_input", "Email", placeholder="Enter your email address"),
                 ui.input_action_button("btn_reset_password_initiate", "Continue", class_="btn"),
-                ui.a("Back to Login", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link")
+                ui.a("Back to Login", href="#",
+                    onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link")
             )
         elif page_state() == "forgot_password_reset":
             return ui.div(
@@ -86,23 +90,17 @@ def server(input, output, session):
                 ui.input_password("new_password", "New Password", placeholder="Enter your new strong password"),
                 ui.input_password("confirm_new_password", "Confirm New Password", placeholder="Confirm your new password"),
                 ui.input_action_button("btn_reset_password_final", "Reset Password", class_="btn"),
-                ui.a("Back to Login", href="#", onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link")
+                ui.a("Back to Login", href="#",
+                    onclick="Shiny.setInputValue('go_to_login', Math.random())", class_="form-link")
             )
 
     @output
     @render.ui
-    def token_text():
-        if show_token() and jwt_token():
-            return ui.div(jwt_token(), class_="token-display")
-        return None
-
-    @output
-    @render.ui
     def protected_content():
-        if logged_in():
+        if logged_in() and jwt_token():
             return ui.div(
                 ui.h4("🔒 Protected Application Dashboard"),
-                ui.p("Welcome to your secure dashboard!"),
+                ui.p("Welcome to your secure dashboard! This area is only accessible after successful authentication."),
                 ui.tags.ul(
                     ui.tags.li("View real-time data analytics."),
                     ui.tags.li("Manage user settings."),
@@ -112,8 +110,16 @@ def server(input, output, session):
         else:
             return ui.div(
                 ui.h4("🚫 Access Restricted"),
-                ui.p("Please log in to view the protected content."),
+                ui.p("Please log in to view the protected content and features."),
             )
+
+    @output
+    @render.ui
+    def token_text():
+        if show_token() and jwt_token():
+            return ui.div(jwt_token(), class_="token-display")
+        return None
+
 
     # --- Page Transitions ---
     @reactive.Effect
