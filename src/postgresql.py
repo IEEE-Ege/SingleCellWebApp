@@ -8,7 +8,7 @@ from server import server
 app_ui = ui.page_fluid(
     # Custom CSS styling for the app's appearance
     ui.head_content(ui.include_css("www/frontend/styles.css"),
-                    ui.tags.script(src="www/frontend/app.js")),
+                    ui.include_js(src="www/frontend/app.js")),
 
 
     # Main application div container
