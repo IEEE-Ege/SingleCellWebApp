@@ -2,25 +2,26 @@ from shiny import App, ui, reactive, render
 from htmltools import head_content
 import bcrypt
 import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # Imports from our own modules
 from db import init_db
+# Import the new function from db_crud
 from db_crud import (
     create_user, 
     get_user_by_username, 
     get_user_by_username_or_email, 
     update_user_password,
-    get_user_by_username_and_email
+    get_user_by_username_and_email # <-- ADDED IMPORT
 )
 from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
+# Initialize the database
+init_db()
 
 # Define the Server logic for the Shiny app
-async def server(input, output, session):
-    # Reactive values
-    await init_db()
+def server(input, output, session):
+    # Reactive values to manage application state
     logged_in = reactive.Value(False)
     current_user = reactive.Value(None)
     jwt_token = reactive.Value(None)
@@ -29,6 +30,7 @@ async def server(input, output, session):
     page_state = reactive.Value("register")
     show_token = reactive.Value(False)
     
+    # Store temporary user info for password reset flow
     reset_username = reactive.Value(None)
     reset_email = reactive.Value(None)
     last_activity = reactive.Value(None)
@@ -153,7 +155,9 @@ async def server(input, output, session):
             message_type.set("error")
             return
         
-        async with get_db() as db:
+        db_generator = await get_db()
+        db = next(db_generator)
+        try:
             existing = await get_user_by_username_or_email(db, username, email)
             if existing:
                 message.set("Username or Email already registered.")
@@ -165,6 +169,8 @@ async def server(input, output, session):
             message.set("Registration successful! You can now log in.")
             message_type.set("success")
             page_state.set("login")
+        finally:
+            next(db_generator, None)
         
     @reactive.Effect
     @reactive.event(input.btn_login)
@@ -177,7 +183,9 @@ async def server(input, output, session):
             message_type.set("error")
             return
         
-        async with get_db() as db:
+        db_generator = await get_db()
+        db = next(db_generator)
+        try:
             user = await get_user_by_username(db, username)
             if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
                 message.set("Invalid username or password.")
@@ -191,8 +199,10 @@ async def server(input, output, session):
             last_activity.set(datetime.datetime.now())
             message.set("Login successful! Welcome!")
             message_type.set("success")
+        finally:
+            next(db_generator, None)
 
-    # --- Password Reset ---
+    # --- MODIFIED FOR SECURITY ---
     @reactive.Effect
     @reactive.event(input.btn_reset_password_initiate)
     async def reset_password_initiate():
@@ -204,18 +214,29 @@ async def server(input, output, session):
             message_type.set("error")
             return
 
-        async with get_db() as db:
+        db_generator = await get_db()
+        db = next(db_generator)
+        try:
+            # PREVIOUSLY: user = get_user_by_username_or_email(db, username, email)_
+            # This was insecure because it would find a user if only the username matched.
+            
+            # NOW: We use the new function that checks for BOTH username AND email.
             user = await get_user_by_username_and_email(db, username, email)
             
             if user:
+                # If a user is found, we know both username and email are correct.
                 reset_username.set(username)
                 reset_email.set(email)
                 message.set("User verified. Please set your new password.")
                 message_type.set("success")
                 page_state.set("forgot_password_reset")
             else:
+                # If no user is found, the combination is wrong.
                 message.set("The username and email combination is incorrect.")
                 message_type.set("error")
+        finally:
+            next(db_generator, None)
+    # ---------------------------
 
     @reactive.Effect
     @reactive.event(input.btn_reset_password_final)
@@ -233,12 +254,15 @@ async def server(input, output, session):
             message_type.set("error")
             return
 
-        async with get_db() as db:
+        db_generator = await get_db()
+        db = next(db_generator)
+        try:
             user, error = await update_user_password(db, reset_username(), reset_email(), new_password)
             if error:
                message.set(error)
                message_type.set("error")
-               return
+               return     
+                   
             if not user:
                 message.set("User not found during password reset.")
                 message_type.set("error")
@@ -250,6 +274,8 @@ async def server(input, output, session):
             page_state.set("login")
             reset_username.set(None)
             reset_email.set(None)
+        finally:
+            next(db_generator, None)
 
     @reactive.Effect
     @reactive.event(input.btn_logout)
@@ -278,12 +304,14 @@ async def server(input, output, session):
         if is_expired:
             message.set("Your session has expired. Please log in again.")
             message_type.set("error")
-            await logout()
+            logout()
 
     @reactive.Effect
     async def protected_action():
         if logged_in() and jwt_token():
-            async with get_db() as db:
+            db_generator = await get_db()
+            db = next(db_generator)
+            try:
                 user = await get_current_user(token=jwt_token(), db=db)
                 if user:
                     last_activity.set(datetime.datetime.now())
@@ -292,4 +320,6 @@ async def server(input, output, session):
                     print("User from token not found in DB. Logging out.")
                     message.set("Your account could not be verified. Please log in again.")
                     message_type.set("error")
-                    await logout()
+                    logout()
+            finally:
+                next(db_generator, None)
