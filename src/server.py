@@ -16,9 +16,10 @@ from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
 # Initialize DB in background
-asyncio.create_task(init_db())
 
 def server(input, output, session):
+
+    asyncio.create_task(init_db())
     # Reactive values
     logged_in = reactive.Value(False)
     current_user = reactive.Value(None)
