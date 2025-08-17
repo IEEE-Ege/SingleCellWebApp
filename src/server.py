@@ -16,12 +16,11 @@ from db_crud import (
 from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
-# Initialize the database
-init_db()
 
 # Define the Server logic for the Shiny app
 async def server(input, output, session):
     # Reactive values
+    await init_db()
     logged_in = reactive.Value(False)
     current_user = reactive.Value(None)
     jwt_token = reactive.Value(None)
