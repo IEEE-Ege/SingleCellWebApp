@@ -34,8 +34,18 @@ def server(input, output, session):
     reset_username = reactive.Value(None)
     reset_email = reactive.Value(None)
     last_activity = reactive.Value(None)
+    db_session_active = reactive.Value(False)
 
     # --- UI Rendering Functions ---
+    
+    @output
+    @render.ui
+    def session_status():
+        if db_session_active():
+            return ui.div("🟢 Database connected", class_="session-status")
+        else:
+            return ui.div("🔴 Database disconnected", class_="session-status")
+
     @output
     @render.ui
     def message_text():
@@ -157,6 +167,7 @@ def server(input, output, session):
         
         db_generator = get_db()
         db = await anext(db_generator)
+        db_session_active.set(True)
         try:
             existing = await get_user_by_username_or_email(db, username, email)
             if existing:
@@ -171,7 +182,7 @@ def server(input, output, session):
             page_state.set("login")
         finally:
             await db.close()
-        
+            db_session_active.set(False)
     @reactive.Effect
     @reactive.event(input.btn_login)
     async def login():
@@ -185,6 +196,7 @@ def server(input, output, session):
         
         db_generator = get_db()
         db = await anext(db_generator)
+        db_session_active.set(True)
         try:
             user = await get_user_by_username(db, username)
             if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
@@ -201,6 +213,7 @@ def server(input, output, session):
             message_type.set("success")
         finally:
             await db.close()
+            db_session_active.set(False)
 
     # --- MODIFIED FOR SECURITY ---
     @reactive.Effect
@@ -216,6 +229,8 @@ def server(input, output, session):
 
         db_generator = get_db()
         db = await anext(db_generator)
+        db_session_active.set(True)
+
         try:
             user = await get_user_by_username_and_email(db, username, email)
             if user:
@@ -229,6 +244,8 @@ def server(input, output, session):
                 message_type.set("error")
         finally:
             await db.close()
+            db_session_active.set(False)
+
     # ---------------------------
 
     @reactive.Effect
@@ -249,6 +266,8 @@ def server(input, output, session):
 
         db_generator = get_db()
         db = await anext(db_generator)
+        db_session_active.set(True)
+   
         try:
             user, error = await update_user_password(db, reset_username(), reset_email(), new_password)
             if error:
@@ -268,7 +287,7 @@ def server(input, output, session):
             reset_email.set(None)
         finally:
             await db.close()
-
+            db_session_active.set(False)
     @reactive.Effect
     @reactive.event(input.btn_logout)
     def logout():
@@ -303,6 +322,7 @@ def server(input, output, session):
         if logged_in() and jwt_token():
             db_generator = get_db()
             db = await anext(db_generator)
+            db_session_active.set(True)
             try:
                 user = await get_current_user(token=jwt_token(), db=db)
                 if user:
@@ -315,3 +335,4 @@ def server(input, output, session):
                     logout()
             finally:
                 await db.close()
+                db_session_active.set(False)
