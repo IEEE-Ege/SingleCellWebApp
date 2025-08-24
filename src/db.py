@@ -14,6 +14,17 @@ engine = create_async_engine(DATABASE_URL, echo=False)
 # Async session factory
 SessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
 
+# Async context manager for session
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def get_session():
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        await session.close()
+
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

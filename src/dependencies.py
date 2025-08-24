@@ -1,17 +1,14 @@
 
 # dependencies.py
-from db import SessionLocal
+from db import get_session
 from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
 from db_crud import get_user_by_username
 from utilities import SECRET_KEY # import secret key from utilities
 
 async def get_db():
-    try:
-        async with SessionLocal() as db:
-            yield db
-    finally:
-        await db.close()
+    async with get_session() as db:
+        yield db
 
 async def get_current_user(token: str, db: AsyncSession):
     """
