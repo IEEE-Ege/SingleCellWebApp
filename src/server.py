@@ -157,20 +157,18 @@ def server(input, output, session):
         
         db_generator = get_db()
         db = await anext(db_generator)
-        try:
-            existing = await get_user_by_username_or_email(db, username, email)
-            if existing:
-                message.set("Username or Email already registered.")
-                message_type.set("error")
-                page_state.set("login")
-                return
-
-            await create_user(db, username, email, password)
-            message.set("Registration successful! You can now log in.")
-            message_type.set("success")
+        existing = await get_user_by_username_or_email(db, username, email)
+        if existing:
+            message.set("Username or Email already registered.")
+            message_type.set("error")
             page_state.set("login")
-        finally:
-            await db.close()
+            return
+
+        await create_user(db, username, email, password)
+        message.set("Registration successful! You can now log in.")
+        message_type.set("success")
+        page_state.set("login")
+
         
     @reactive.Effect
     @reactive.event(input.btn_login)
@@ -185,22 +183,20 @@ def server(input, output, session):
         
         db_generator = get_db()
         db = await anext(db_generator)
-        try:
-            user = await get_user_by_username(db, username)
-            if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-                message.set("Invalid username or password.")
-                message_type.set("error")
-                return
+        user = await get_user_by_username(db, username)
+        if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+            message.set("Invalid username or password.")
+            message_type.set("error")
+            return
 
-            token = create_jwt_token(username=user.username)
-            jwt_token.set(token)
-            current_user.set(user)
-            logged_in.set(True)
-            last_activity.set(datetime.datetime.now())
-            message.set("Login successful! Welcome!")
-            message_type.set("success")
-        finally:
-            await db.close()
+        token = create_jwt_token(username=user.username)
+        jwt_token.set(token)
+        current_user.set(user)
+        logged_in.set(True)
+        last_activity.set(datetime.datetime.now())
+        message.set("Login successful! Welcome!")
+        message_type.set("success")
+
 
     # --- MODIFIED FOR SECURITY ---
     @reactive.Effect
@@ -216,19 +212,17 @@ def server(input, output, session):
 
         db_generator = get_db()
         db = await anext(db_generator)
-        try:
-            user = await get_user_by_username_and_email(db, username, email)
-            if user:
-                reset_username.set(username)
-                reset_email.set(email)
-                message.set("User verified. Please set your new password.")
-                message_type.set("success")
-                page_state.set("forgot_password_reset")
-            else:
-                message.set("The username and email combination is incorrect.")
-                message_type.set("error")
-        finally:
-            await db.close()
+        user = await get_user_by_username_and_email(db, username, email)
+        if user:
+            reset_username.set(username)
+            reset_email.set(email)
+            message.set("User verified. Please set your new password.")
+            message_type.set("success")
+            page_state.set("forgot_password_reset")
+        else:
+            message.set("The username and email combination is incorrect.")
+            message_type.set("error")
+
     # ---------------------------
 
     @reactive.Effect
@@ -247,27 +241,25 @@ def server(input, output, session):
             message_type.set("error")
             return
 
-        db_generator = get_db()
+        db_generator = get_db() #dependency injection
         db = await anext(db_generator)
-        try:
-            user, error = await update_user_password(db, reset_username(), reset_email(), new_password)
-            if error:
-                message.set(error)
-                message_type.set("error")
-                return
-            if not user:
-                message.set("User not found during password reset.")
-                message_type.set("error")
-                page_state.set("forgot_password_initiate")
-                return
+        user, error = await update_user_password(db, reset_username(), reset_email(), new_password)
+        if error:
+            message.set(error)
+            message_type.set("error")
+            return
+        if not user:
+            message.set("User not found during password reset.")
+            message_type.set("error")
+            page_state.set("forgot_password_initiate")
+            return
 
-            message.set("Password has been successfully reset.")
-            message_type.set("success")
-            page_state.set("login")
-            reset_username.set(None)
-            reset_email.set(None)
-        finally:
-            await db.close()
+        message.set("Password has been successfully reset.")
+        message_type.set("success")
+        page_state.set("login")
+        reset_username.set(None)
+        reset_email.set(None)
+
 
     @reactive.Effect
     @reactive.event(input.btn_logout)
@@ -303,15 +295,12 @@ def server(input, output, session):
         if logged_in() and jwt_token():
             db_generator = get_db()
             db = await anext(db_generator)
-            try:
-                user = await get_current_user(token=jwt_token(), db=db)
-                if user:
-                    last_activity.set(datetime.datetime.now())
-                    print(f"Activity refreshed for user: {user.username}")
-                else:
-                    print("User from token not found in DB. Logging out.")
-                    message.set("Your account could not be verified. Please log in again.")
-                    message_type.set("error")
-                    logout()
-            finally:
-                await db.close()
+            user = await get_current_user(token=jwt_token(), db=db)
+            if user:
+                last_activity.set(datetime.datetime.now())
+                print(f"Activity refreshed for user: {user.username}")
+            else:
+                print("User from token not found in DB. Logging out.")
+                message.set("Your account could not be verified. Please log in again.")
+                message_type.set("error")
+                logout()

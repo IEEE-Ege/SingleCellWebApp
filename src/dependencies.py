@@ -7,8 +7,11 @@ from db_crud import get_user_by_username
 from utilities import SECRET_KEY # import secret key from utilities
 
 async def get_db():
-    async with SessionLocal() as db:
-        yield db
+    try:
+        async with SessionLocal() as db:
+            yield db
+    finally:
+        await db.close()
 
 async def get_current_user(token: str, db: AsyncSession):
     """
