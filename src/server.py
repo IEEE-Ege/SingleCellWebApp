@@ -18,16 +18,15 @@ from dependencies import get_db, get_current_user
 
 class AuthenticationError(Exception):
     pass
+class UserAlreadyExistsError(Exception):
+    pass
+class ValidationError(Exception):
+    pass
+class DatabaseConnectionError(Exception):
+    pass
 
 # Initialize the database
-async def server(input, output, session):
-    # DB init runs safely inside shiny loop
-    await init_db()
-
-    @output
-    @render.text
-    def test():
-        return "OK"
+init_db()
 
 # Define the Server logic for the Shiny app
 def server(input, output, session):
@@ -175,19 +174,45 @@ def server(input, output, session):
             message_type.set("error")
             return
         
-        db_generator = get_db()
-        db = await anext(db_generator)
-        existing = await get_user_by_username_or_email(db, username, email)
-        if existing:
-            message.set("Username or Email already registered.")
+        if len(password) < 6:
+            message.set("Password is too short. It must be at least 6 characters.")
             message_type.set("error")
-            page_state.set("login")
             return
 
-        await create_user(db, username, email, password)
-        message.set("Registration successful! You can now log in.")
-        message_type.set("success")
-        page_state.set("login")
+        db_generator = get_db()
+        db = None 
+        
+        try:
+            try:
+                db = await anext(db_generator)
+            except Exception:
+                raise DatabaseConnectionError("System is currently unavailable. Please try again later.")
+
+            existing = await get_user_by_username_or_email(db, username, email)
+            if existing:
+                raise UserAlreadyExistsError("Username or Email already registered.")
+
+            await create_user(db, username, email, password)
+            message.set("Registration successful! You can now log in.")
+            message_type.set("success")
+            page_state.set("login")
+        
+        except UserAlreadyExistsError as e:
+            message.set(str(e))
+            message_type.set("error")
+        
+        except DatabaseConnectionError as e:
+            message.set(str(e))
+            message_type.set("error")
+            
+        except Exception as e:
+            print(f"Register Error: {e}")
+            message.set("An unexpected error occurred.")
+            message_type.set("error")
+
+        finally:
+            if db:
+                await db.close()
 
         
     @reactive.Effect
@@ -202,10 +227,15 @@ def server(input, output, session):
             return
         
         db_generator = get_db()
-        db = await anext(db_generator)
-        db_session_active.set(True)
+        db = None
         
         try:
+            try:
+                db = await anext(db_generator)
+                db_session_active.set(True)
+            except Exception:
+                raise DatabaseConnectionError("System is currently unavailable. Please try again later.")
+
             user = await get_user_by_username(db, username)
 
             if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
@@ -220,13 +250,16 @@ def server(input, output, session):
             message_type.set("success")
             
         except AuthenticationError as e:
-            # --- DÜZELTİLEN KISIM BURASI ---
-            # Bak, bu satırlar artık except'in içinde (sağ tarafta) duruyor:
+            message.set(str(e))
+            message_type.set("error")
+
+        except DatabaseConnectionError as e:
             message.set(str(e))
             message_type.set("error")
 
         finally:
-            await db.close()
+            if db:
+                await db.close()
             db_session_active.set(False)
 
 
