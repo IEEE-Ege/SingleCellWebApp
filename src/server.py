@@ -16,6 +16,9 @@ from db_crud import (
 from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
+class AuthenticationError(Exception):
+    pass
+
 # Initialize the database
 init_db()
 
@@ -193,19 +196,31 @@ def server(input, output, session):
         
         db_generator = get_db()
         db = await anext(db_generator)
-        user = await get_user_by_username(db, username)
-        if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-            message.set("Invalid username or password.")
-            message_type.set("error")
-            return
+        db_session_active.set(True)
+        
+        try:
+            user = await get_user_by_username(db, username)
 
-        token = create_jwt_token(username=user.username)
-        jwt_token.set(token)
-        current_user.set(user)
-        logged_in.set(True)
-        last_activity.set(datetime.datetime.now())
-        message.set("Login successful! Welcome!")
-        message_type.set("success")
+            if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+                raise AuthenticationError("Login informations are wrong. Please try again.")
+
+            token = create_jwt_token(username=user.username)
+            jwt_token.set(token)
+            current_user.set(user)
+            logged_in.set(True)
+            last_activity.set(datetime.datetime.now())
+            message.set("Login successful! Welcome!")
+            message_type.set("success")
+            
+        except AuthenticationError as e:
+            # --- DÜZELTİLEN KISIM BURASI ---
+            # Bak, bu satırlar artık except'in içinde (sağ tarafta) duruyor:
+            message.set(str(e))
+            message_type.set("error")
+
+        finally:
+            await db.close()
+            db_session_active.set(False)
 
 
     # --- MODIFIED FOR SECURITY ---
