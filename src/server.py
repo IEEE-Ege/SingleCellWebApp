@@ -20,7 +20,14 @@ class AuthenticationError(Exception):
     pass
 
 # Initialize the database
-init_db()
+async def server(input, output, session):
+    # DB init runs safely inside shiny loop
+    await init_db()
+
+    @output
+    @render.text
+    def test():
+        return "OK"
 
 # Define the Server logic for the Shiny app
 def server(input, output, session):
