@@ -16,7 +16,7 @@ from db_crud import (
 from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
-from src.errors import (
+from errors import (
     AuthenticationError,
     UserAlreadyExistsError,
     ValidationError,
