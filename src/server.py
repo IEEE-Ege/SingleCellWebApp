@@ -16,14 +16,12 @@ from db_crud import (
 from utilities import create_jwt_token, is_token_expired, SECRET_KEY
 from dependencies import get_db, get_current_user
 
-class AuthenticationError(Exception):
-    pass
-class UserAlreadyExistsError(Exception):
-    pass
-class ValidationError(Exception):
-    pass
-class DatabaseConnectionError(Exception):
-    pass
+from src.errors import (
+    AuthenticationError,
+    UserAlreadyExistsError,
+    ValidationError,
+    DatabaseConnectionError
+)
 
 # Initialize the database
 init_db()
