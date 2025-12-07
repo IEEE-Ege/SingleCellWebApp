@@ -1,6 +1,6 @@
 from prefect import flow, task
 
-# louv_yeni ile aynı ortamda olduğunu varsayıyorum
+
 from louv_yeni import (
     upload_dataset as backend_upload_dataset,
     store_dataset as backend_store_dataset,
@@ -15,7 +15,7 @@ from louv_yeni import (
     generate_output_report as backend_generate_output_report,
 )
 
-# === KONFİG (şimdilik sabit; istersen flow parametresine çevirebilirsin) ===
+# === KONFİG  ===
 DATA_PATH = "data/input.h5ad"   # TODO: kendi dosya path'inle değiştir
 MIN_GENES = 200
 MAX_GENES = 5000
