@@ -6,40 +6,123 @@ from shiny.types import FileInfo
 import matplotlib.pyplot as plt
 import scanpy as sc
 
+# === ORTAK PIPELINE FONKSİYONLARI (Hem Prefect hem Shiny kullanacak) ===
+
+def _load_adata(path: str):
+    """H5AD dosyasını yükle ve var_names'i string'e çevir."""
+    adata = sc.read_h5ad(path)
+    adata.var_names = adata.var_names.astype(str)
+    return adata
+
+def _run_quality_control(adata, min_genes: int, max_genes: int):
+    """QC: min_genes ve max_genes filtresi uygula."""
+    sc.pp.filter_cells(adata, min_genes=min_genes)
+    adata = adata[adata.obs.n_genes < max_genes, :].copy()
+    return adata
+
+def _run_normalization_and_hvg(adata, hvg_method: str, n_top_genes: int):
+    """Normalize, log-transform, HVG seçimi ve scale."""
+    sc.pp.normalize_total(adata)
+    sc.pp.log1p(adata)
+
+    sc.pp.highly_variable_genes(
+        adata,
+        flavor=hvg_method,
+        n_top_genes=n_top_genes
+    )
+    adata = adata[:, adata.var.highly_variable].copy()
+    sc.pp.scale(adata, max_value=10)
+    return adata
+
+def _run_dimensionality_reduction(adata, perplexity: float):
+    """PCA, komşular, UMAP ve t-SNE."""
+    sc.pp.pca(adata)
+    sc.pp.neighbors(adata)
+    sc.tl.umap(adata)
+    sc.tl.tsne(adata, perplexity=perplexity)
+    return adata
+
+def _run_clustering(adata, method: str, resolution: float):
+    """Leiden veya Louvain clustering."""
+    if method == "louvain":
+        sc.tl.louvain(adata, resolution=resolution, random_state=42)
+    else:
+        sc.tl.leiden(adata, resolution=resolution, random_state=42)
+    return adata
+
+def _save_results_to_disk(adata, out_path: str | None = None):
+    """
+    Sonuçları diske kaydetmek için basit bir örnek.
+    Şimdilik opsiyonel; istersen path verebilirsin.
+    """
+    if out_path is not None:
+        adata.write(out_path)
+
+
 # === BACKEND FONKSİYONLAR (Prefect buradakileri çağıracak) ===
+# Buradakiler GERÇEK pipeline adımlarını çağırıyor, sadece print değil.
 
-def upload_dataset():
+def upload_dataset(path: str):
     print("[louv_yeni] upload_dataset backend fonksiyonu çalıştı.")
+    adata = _load_adata(path)
+    return adata
 
-def store_dataset():
+def store_dataset(adata):
+    """
+    Şimdilik sadece geçiş yapıyor.
+    İstersen burada geçici dosyaya yazma vs. yapabilirsin.
+    """
     print("[louv_yeni] store_dataset backend fonksiyonu çalıştı.")
+    return adata
 
-def quality_control():
+def quality_control(adata, min_genes: int, max_genes: int):
     print("[louv_yeni] quality_control backend fonksiyonu çalıştı.")
-    # Buraya gerçek QC logic'in gelebilir (ör. adata filtresi vs.)
+    adata = _run_quality_control(adata, min_genes, max_genes)
+    # Burada istersen "hiç hücre kalmadı" kontrolü yapıp hata fırlatabilirsin
+    if adata.n_obs == 0:
+        raise ValueError("QC sonrası hiç hücre kalmadı.")
+    return adata
 
-def normalization():
+def normalization(adata, hvg_method: str, n_top_genes: int):
     print("[louv_yeni] normalization backend fonksiyonu çalıştı.")
+    adata = _run_normalization_and_hvg(adata, hvg_method, n_top_genes)
+    return adata
 
 def log_gc_errors():
-    print("[louv_yeni] log_gc_errors backend fonksiyonu çalıştı.")
+    # QC veya başka bir adım hata verirse Prefect burayı çağıracak
+    print("[louv_yeni] log_gc_errors backend fonksiyonu çalıştı. (Burada log dosyasına yazılabilir)")
 
-def dimensionality_reduction_pca():
+def dimensionality_reduction_pca(adata, perplexity: float):
     print("[louv_yeni] dimensionality_reduction_pca backend fonksiyonu çalıştı.")
+    adata = _run_dimensionality_reduction(adata, perplexity)
+    return adata
 
-def clustering():
+def clustering(adata, method: str, resolution: float):
     print("[louv_yeni] clustering backend fonksiyonu çalıştı.")
+    adata = _run_clustering(adata, method, resolution)
+    return adata
 
-def save_results():
+def save_results(adata, out_path: str | None = None):
     print("[louv_yeni] save_results backend fonksiyonu çalıştı.")
+    _save_results_to_disk(adata, out_path)
 
-def generate_umap_visualization():
+def generate_umap_visualization(adata):
+    """
+    Prefect için placeholder. İstersen burada figürü kaydedebilirsin.
+    Shiny tarafı zaten ayrı plot ediyor.
+    """
     print("[louv_yeni] generate_umap_visualization backend fonksiyonu çalıştı.")
 
-def render_interactive_umap():
+def render_interactive_umap(adata):
+    """
+    Prefect için placeholder. Örn. bir HTML dosyası üretilebilir.
+    """
     print("[louv_yeni] render_interactive_umap backend fonksiyonu çalıştı.")
 
 def generate_output_report():
+    """
+    Prefect için placeholder. Örn. bir PDF/HTML raporu oluşturulabilir.
+    """
     print("[louv_yeni] generate_output_report backend fonksiyonu çalıştı.")
 
 
@@ -58,7 +141,8 @@ app_ui = ui.page_fluid(
                             choices=["seurat_v3", "seurat", "cell_ranger"],
                             selected="seurat_v3"),
             ui.input_slider("n_top_genes", "Top HVGs to keep", min=100, max=5000, value=2000),
-            ui.input_select("reduction_method", "Dimensionality Reduction Method", choices=["pca"], selected="pca"),
+            ui.input_select("reduction_method", "Dimensionality Reduction Method",
+                            choices=["pca"], selected="pca"),
             ui.input_slider("perplexity", "t-SNE Perplexity", min=5, max=50, value=30),
             ui.input_action_button("run", "Run Analysis", class_="btn-success"),
             ui.panel_title("Clustering"),
@@ -156,32 +240,22 @@ def server(input, output, session):
 
     @reactive.event(input.run)
     def process_file():
+        """
+        Eski haliyle bütün pipeline burada yazılıydı.
+        Artık backend fonksiyonlarını kullanıyoruz ki Prefect ile ortak olsun.
+        """
         file: list[FileInfo] | None = input.file()
         if not file:
             return None
 
         path = file[0]["datapath"]
-        adata = sc.read_h5ad(path)
 
-        sc.pp.filter_cells(adata, min_genes=input.min_genes())
-        adata = adata[adata.obs.n_genes < input.max_genes(), :]
-
-        sc.pp.normalize_total(adata)
-        sc.pp.log1p(adata)
-        adata.var_names = adata.var_names.astype(str)
-
-        sc.pp.highly_variable_genes(
-            adata,
-            flavor=input.hvg_method(),
-            n_top_genes=input.n_top_genes()
-        )
-        adata = adata[:, adata.var.highly_variable]
-
-        sc.pp.scale(adata, max_value=10)
-        sc.pp.pca(adata)
-        sc.pp.neighbors(adata)
-        sc.tl.umap(adata)
-        sc.tl.tsne(adata, perplexity=input.perplexity())
+        # === Prefect ile ortak backend fonksiyonları ===
+        adata = upload_dataset(path)
+        adata = store_dataset(adata)
+        adata = quality_control(adata, input.min_genes(), input.max_genes())
+        adata = normalization(adata, input.hvg_method(), input.n_top_genes())
+        adata = dimensionality_reduction_pca(adata, input.perplexity())
 
         return adata
 
@@ -194,10 +268,7 @@ def server(input, output, session):
         method = input.clustering_method()
         resolution = input.resolution()
 
-        if method == "louvain":
-            sc.tl.louvain(adata, resolution=resolution, random_state=42)
-        elif method == "leiden":
-            sc.tl.leiden(adata, resolution=resolution, random_state=42)
+        adata = clustering(adata, method, resolution)
 
         return adata
 
