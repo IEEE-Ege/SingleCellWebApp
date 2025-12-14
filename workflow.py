@@ -1,7 +1,7 @@
 from prefect import flow, task
 
 
-from louv_yeni import (
+from louv_yeni_son import (
     upload_dataset as backend_upload_dataset,
     store_dataset as backend_store_dataset,
     quality_control as backend_quality_control,
@@ -16,7 +16,7 @@ from louv_yeni import (
 )
 
 # === KONFİG  ===
-DATA_PATH = "data/input.h5ad"   # TODO: kendi dosya path'inle değiştir
+DATA_PATH = "./COVID.h5ad"   # TODO: kendi dosya path'inle değiştir
 MIN_GENES = 200
 MAX_GENES = 5000
 HVG_METHOD = "seurat_v3"
@@ -98,7 +98,7 @@ def my_flow():
         print("PCA tekrar denendi ama başarısız oldu, clustering atlandı.")
 
     # 5) Son adımlar
-    save_results(adata)
+    # save_results(adata)
     generate_umap_visualization(adata)
     render_interactive_umap(adata)
     generate_output_report()
